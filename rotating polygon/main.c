@@ -2,58 +2,39 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define numberOfVertices 5
-#define rotationSpeed 0.02
+#define NUMBER_OF_VERTICES 5
+#define ROTATION_SPEED 0.02
 
-#define radiusChangeSpeed 1
-#define growAndShrinkMargin 20
-#define enterKeyCode 27
-#define initialRadius 50
+#define RADIUS_CHANGE_SPEED 1
+#define SCALING_MARGIN 30
+#define ENTER_KEY_CODE 27
+#define INITIAL_RADIUS 50
 
 float updateRotationAngle(float angle)
 {
-    angle += rotationSpeed;
+    angle += ROTATION_SPEED;
     if (angle > 2 * M_PI)
     {
-        return angle - (2 * M_PI);
+        return 2 * M_PI - angle;
     }
     return angle;
 }
 
-float updateRadius(int radius, bool *isGrowing)
+int updateRadius(int radius, int *radiusDelta)
 {
-    if (*isGrowing)
+    int maxRadius = fmin(gfx_screenHeight(), gfx_screenWidth()) / 2 - SCALING_MARGIN;
+    if (radius + *radiusDelta > maxRadius || radius + *radiusDelta < SCALING_MARGIN)
     {
-        if (radius + radiusChangeSpeed < gfx_screenHeight() / 2 - growAndShrinkMargin && radius + radiusChangeSpeed < gfx_screenWidth() / 2 - growAndShrinkMargin)
-        {
-            radius += radiusChangeSpeed;
-        }
-        else
-        {
-            radius -= radiusChangeSpeed;
-            *isGrowing = false;
-        }
+        *radiusDelta *= -1;
     }
-    else
-    {
-        if (radius - radiusChangeSpeed > growAndShrinkMargin)
-        {
-            radius -= radiusChangeSpeed;
-        }
-        else
-        {
-            radius += radiusChangeSpeed;
-            *isGrowing = true;
-        }
-    }
-    return radius;
+    return radius + *radiusDelta;
 }
 
 void drawPolygon(float angleBetweenVertices, float rotationAngle, int screenCenterX, int screenCenterY, int radius)
 {
     float prevX = 0;
     float prevY = 0;
-    for (int i = 0; i <= numberOfVertices; i++)
+    for (int i = 0; i <= NUMBER_OF_VERTICES; i++)
     {
         float angle = i * angleBetweenVertices + rotationAngle;
         float x = screenCenterX + radius * sin(angle);
@@ -76,21 +57,21 @@ int main()
 
     int screenCenterX = gfx_screenWidth() / 2;
     int screenCenterY = gfx_screenHeight() / 2;
-    float angleBetweenVertices = 2 * M_PI / numberOfVertices;
+    float angleBetweenVertices = 2 * M_PI / NUMBER_OF_VERTICES;
     float rotationAngle = 0;
-    int radius = initialRadius;
-    bool isRadiusGrowing = true;
+    int radius = INITIAL_RADIUS;
+    int radiusDelta = RADIUS_CHANGE_SPEED;
 
     while (true)
     {
-        if (gfx_pollkey() == enterKeyCode)
+        if (gfx_pollkey() == ENTER_KEY_CODE)
         {
             break;
         }
         gfx_filledRect(0, 0, gfx_screenWidth() - 1, gfx_screenHeight() - 1,
                        BLACK);
 
-        radius = updateRadius(radius, &isRadiusGrowing);
+        radius = updateRadius(radius, &radiusDelta);
         rotationAngle = updateRotationAngle(rotationAngle);
         drawPolygon(angleBetweenVertices, rotationAngle, screenCenterX, screenCenterY, radius);
 
