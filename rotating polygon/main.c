@@ -7,7 +7,6 @@
 
 #define RADIUS_CHANGE_SPEED 1
 #define SCALING_MARGIN 30
-#define ESCAPE_KEY_CODE 27
 #define INITIAL_RADIUS 50
 
 float updateRotationAngle(float angle)
@@ -64,7 +63,7 @@ int main()
 
     while (true)
     {
-        if (gfx_pollkey() == ESCAPE_KEY_CODE)
+        if (gfx_pollkey() == SDLK_ESCAPE)
         {
             break;
         }
