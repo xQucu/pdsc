@@ -4,7 +4,7 @@
 
 // NUMBER_OF_PEGS should be no more than 10
 #define PEGS_NUMBER 3
-#define DISCS_NUMBER 3
+#define DISCS_NUMBER 5
 
 #define ENTER_KEY_CODE 13
 
@@ -12,7 +12,6 @@
 #define PEG_COLOR RED
 #define BASE_COLOR YELLOW
 
-#define PEG_HEIGHT 500
 #define PEG_WIDTH 10
 
 #define BASE_HEIGHT 10
@@ -21,7 +20,7 @@
 #define END_SCREEN_MESSAGE_COLOR RED
 
 #define BACKGROUND_COLOR BLACK
-
+#define EXTRA_SPACING 4
 enum
 {
     PLAYING,
@@ -63,30 +62,27 @@ int peek(int *stack, int *size)
 void drawPegsAndBase()
 {
     gfx_filledRect(0, gfx_screenHeight(), gfx_screenWidth(), gfx_screenHeight() - BASE_HEIGHT, BASE_COLOR);
+    int spaceBetweenPegs = gfx_screenWidth() / (PEGS_NUMBER + 1);
+    int discHeight = (gfx_screenHeight() - BASE_HEIGHT) / (DISCS_NUMBER + EXTRA_SPACING);
+    int pegTopYCoord = gfx_screenHeight() - (DISCS_NUMBER + 1) * discHeight;
     for (int i = 1; i <= PEGS_NUMBER; i++)
     {
-        int pegLeftXCoord = i * gfx_screenWidth() / (PEGS_NUMBER + 1) - PEG_WIDTH / 2;
-        gfx_filledRect(pegLeftXCoord, gfx_screenHeight() - BASE_HEIGHT - 1, pegLeftXCoord + PEG_WIDTH, gfx_screenHeight() - BASE_HEIGHT - PEG_HEIGHT, PEG_COLOR);
+        int pegLeftXCoord = i * spaceBetweenPegs - (PEG_WIDTH / 2);
+        gfx_filledRect(pegLeftXCoord, gfx_screenHeight() - BASE_HEIGHT - 1, pegLeftXCoord + PEG_WIDTH, pegTopYCoord, PEG_COLOR);
     }
     return;
 }
 
 bool tryMoving(int *stackIdxToMoveFrom, int *stackIdxToMoveTo, int stacks[PEGS_NUMBER][DISCS_NUMBER], int sizes[PEGS_NUMBER])
 {
-    // todo check double click handling
     if (*stackIdxToMoveFrom == -1 || *stackIdxToMoveTo == -1 || *stackIdxToMoveTo >= PEGS_NUMBER || *stackIdxToMoveFrom >= PEGS_NUMBER)
     {
         return false;
     }
 
-    // printf("Attempting to move from stack %d to stack %d\n", *stackIdxToMoveFrom, *stackIdxToMoveTo);
-    // printf("Top of stack %d: %d\n", *stackIdxToMoveFrom, peek(stacks[*stackIdxToMoveFrom], &sizes[*stackIdxToMoveFrom]));
-    // printf("Top of stack %d: %d\n", *stackIdxToMoveTo, peek(stacks[*stackIdxToMoveTo], &sizes[*stackIdxToMoveTo]));
     if ((peek(stacks[*stackIdxToMoveFrom], &sizes[*stackIdxToMoveFrom]) < peek(stacks[*stackIdxToMoveTo], &sizes[*stackIdxToMoveTo]) || peek(stacks[*stackIdxToMoveTo], &sizes[*stackIdxToMoveTo]) == 0) && peek(stacks[*stackIdxToMoveFrom], &sizes[*stackIdxToMoveFrom]) != 0)
     {
-        // printf("Moving\n");
         int disc = pop(stacks[*stackIdxToMoveFrom], &sizes[*stackIdxToMoveFrom]);
-        // printf("Got the disc\n");
 
         push(disc, stacks[*stackIdxToMoveTo], &sizes[*stackIdxToMoveTo]);
         *stackIdxToMoveTo = -1;
@@ -116,21 +112,18 @@ void preparePegsForGame(int *stack, int *size)
 
 void renderDiscs(int stacks[PEGS_NUMBER][DISCS_NUMBER], int sizes[PEGS_NUMBER])
 {
-    int discHeight = PEG_HEIGHT / (1 + DISCS_NUMBER);
+    int discHeight = (gfx_screenHeight() - BASE_HEIGHT) / (DISCS_NUMBER + 4);
+    int discScale = (gfx_screenWidth() / (PEGS_NUMBER + 1) - PEG_WIDTH / 2) / DISCS_NUMBER;
     for (int p = 1; p <= PEGS_NUMBER; p++)
     {
         int discBottomCoord = gfx_screenHeight() - BASE_HEIGHT - 1;
         int pegCenterXCoord = p * gfx_screenWidth() / (PEGS_NUMBER + 1);
-        // printf("PEG: %d, COORDS: %d\n", p, pegCenterXCoord);
-        // printf("PEG: %d, SIZES[p]: %d\n", p, sizes[p]);
         for (int d = 1; d <= sizes[p - 1]; d++)
         {
             // todo change how the width is handled
-            int discWidth = (stacks[p - 1][d - 1] + 1) * 10;
-            // printf("PEG: %d, DISC: %d, DISC_WIDTH: %d\n", p - 1, d, discWidth);
+            int discWidth = stacks[p - 1][d - 1] * discScale;
+            printf("Disc width: %d\n", discWidth);
             float discLeftXCoord = pegCenterXCoord - discWidth / 2.0;
-            // printf("PEG: %d, CENTER: %d, LEFT: %f, DISC: %d, DISC_WIDTH: %d\n", p - 1, pegCenterXCoord, discLeftXCoord, d, discWidth);
-            // printf("Drawing disc at: LEFT: %f, BOTTOM: %d, RIGHT: %f, TOP: %d\n", discLeftXCoord, discBottomCoord, discLeftXCoord + discWidth, discBottomCoord - discHeight);
             gfx_filledRect(discLeftXCoord, discBottomCoord, discLeftXCoord + discWidth, discBottomCoord - discHeight, DISC_COLOR);
             discBottomCoord -= discHeight;
         }
@@ -143,8 +136,11 @@ void handleKeyPress(int *stackToMoveFrom, int *stackToMoveTo)
     {
         exit(3);
     }
+
     // Numbers for keys from 0 to 1, have codes from 48 to 57,
-    // thus when substracting 48 from key code, we get exact key number
+    // thus instead of long switch, simple math is used to get peg number
+    // eg. 1 is pressed, then key value is 49; (49+1)%10=0 <- first peg.
+
     else if (key >= 49 && key <= 57)
     {
         if (*stackToMoveFrom == -1)
@@ -204,15 +200,12 @@ int main()
     {
         gfx_filledRect(0, 0, gfx_screenWidth() - 1, gfx_screenHeight() - 1,
                        BACKGROUND_COLOR);
-        printf("LOOP RUNS\n");
         if (stackSizes[PEGS_NUMBER - 1] == DISCS_NUMBER)
         {
-            printf("game won\n");
             gameState = FINISHED;
         }
         if (gameState == PLAYING)
         {
-            printf("PLAYING\n");
             drawPegsAndBase();
             handleKeyPress(&stackToMoveFrom, &stackToMoveTo);
             tryMoving(&stackToMoveFrom, &stackToMoveTo, stacks, stackSizes);
@@ -220,7 +213,6 @@ int main()
         }
         else if (gameState == FINISHED)
         {
-            printf("game has finished\n");
             int shouldGameRestart = endScreen();
             if (shouldGameRestart)
             {
@@ -229,15 +221,15 @@ int main()
             }
         }
 
-        for (int i = 0; i < PEGS_NUMBER; i++)
-        {
-            printf("Stack %d (size %d): ", i, stackSizes[i]);
-            for (int j = 0; j < stackSizes[i]; j++)
-            {
-                printf("%d ", stacks[i][j]);
-            }
-            printf("\n");
-        }
+        // for (int i = 0; i < PEGS_NUMBER; i++)
+        // {
+        //     printf("Stack %d (size %d): ", i, stackSizes[i]);
+        //     for (int j = 0; j < stackSizes[i]; j++)
+        //     {
+        //         printf("%d ", stacks[i][j]);
+        //     }
+        //     printf("\n");
+        // }
         gfx_updateScreen();
         SDL_Delay(10);
     }
