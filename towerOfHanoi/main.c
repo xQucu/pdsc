@@ -3,8 +3,8 @@
 #include <stdbool.h>
 
 // NUMBER_OF_PEGS should be no more than 10
-#define PEGS_NUMBER 10
-#define DISCS_NUMBER 10
+#define PEGS_NUMBER 3
+#define DISCS_NUMBER 3
 
 #define ENTER_KEY_CODE 13
 
@@ -106,10 +106,18 @@ bool animate(int *movingPieceX, int *movingPieceY, int movingPieceSize, int cell
         if (*movingPieceX < finalDiscX)
         {
             (*movingPieceX) += ANIMATION_SPEED;
+            if (*movingPieceX > finalDiscX)
+            {
+                *movingPieceX = finalDiscX;
+            }
         }
         else
         {
             (*movingPieceX) -= ANIMATION_SPEED;
+            if (*movingPieceX < finalDiscX)
+            {
+                *movingPieceX = finalDiscX;
+            }
         }
     }
     else if (*movingPieceX == finalDiscX && *movingPieceY < finalDiscY)
