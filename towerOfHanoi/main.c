@@ -3,8 +3,8 @@
 #include <stdbool.h>
 
 // NUMBER_OF_PEGS should be no more than 10
-#define PEGS_NUMBER 3
-#define DISCS_NUMBER 3
+#define PEGS_NUMBER 10
+#define DISCS_NUMBER 10
 
 #define ENTER_KEY_CODE 13
 
@@ -21,7 +21,7 @@
 
 #define BACKGROUND_COLOR BLACK
 #define EXTRA_SPACING 4
-#define ANIMATION_SPEED 2
+#define ANIMATION_SPEED 20
 
 enum
 {
@@ -38,6 +38,7 @@ bool push(int discSize, int *stack, int *size)
     }
     stack[*size] = discSize;
     (*size)++;
+
     return true;
 }
 
@@ -49,6 +50,7 @@ int pop(int *stack, int *size)
     }
     int disc = stack[*size - 1];
     (*size)--;
+
     return disc;
 }
 
@@ -58,6 +60,7 @@ int peek(int *stack, int *size)
     {
         return 0;
     }
+
     return stack[*size - 1];
 }
 
@@ -72,18 +75,21 @@ void drawPegsAndBase()
         int pegLeftXCoord = i * spaceBetweenPegs - (PEG_WIDTH / 2);
         gfx_filledRect(pegLeftXCoord, gfx_screenHeight() - BASE_HEIGHT - 1, pegLeftXCoord + PEG_WIDTH, pegTopYCoord, PEG_COLOR);
     }
+
     return;
 }
 
 bool animate(int *movingPieceX, int *movingPieceY, int movingPieceSize, int celling, int finalDiscX, int finalDiscY, int stacks[PEGS_NUMBER][DISCS_NUMBER], int stackSizes[PEGS_NUMBER], int stackToMoveTo)
 {
-    gfx_filledRect(*movingPieceX, *movingPieceY, *movingPieceX + movingPieceSize * (gfx_screenWidth() / (PEGS_NUMBER + 1) - PEG_WIDTH / 2) / DISCS_NUMBER, *movingPieceY + (gfx_screenHeight() - BASE_HEIGHT) / (DISCS_NUMBER + 4), DISC_COLOR);
-    printf("movingPieceX: %d, movingPieceY: %d, movingPieceSize: %d, celling: %d, finalDiscX: %d, finalDiscY: %d\n", *movingPieceX, *movingPieceY, movingPieceSize, celling, finalDiscX, finalDiscY);
+    int secondXCoord = *movingPieceX + movingPieceSize * (gfx_screenWidth() / (PEGS_NUMBER + 1) - PEG_WIDTH / 2) / DISCS_NUMBER;
+    int secondYCoord = *movingPieceY + (gfx_screenHeight() - BASE_HEIGHT) / (DISCS_NUMBER + 4);
+    gfx_filledRect(*movingPieceX, *movingPieceY, secondXCoord, secondYCoord, DISC_COLOR);
 
     int key = gfx_pollkey();
     if (key == SDLK_ESCAPE)
     {
         push(movingPieceSize, stacks[stackToMoveTo], &stackSizes[stackToMoveTo]);
+
         return true;
     }
 
@@ -109,12 +115,18 @@ bool animate(int *movingPieceX, int *movingPieceY, int movingPieceSize, int cell
     else if (*movingPieceX == finalDiscX && *movingPieceY < finalDiscY)
     {
         (*movingPieceY) += ANIMATION_SPEED;
+        if (*movingPieceY > finalDiscY)
+        {
+            *movingPieceY = finalDiscY;
+        }
     }
     else
     {
         push(movingPieceSize, stacks[stackToMoveTo], &stackSizes[stackToMoveTo]);
+
         return true;
     }
+
     return false;
 }
 
@@ -122,28 +134,26 @@ bool tryMoving(int *stackIdxToMoveFrom, int *stackIdxToMoveTo, int stacks[PEGS_N
 {
     if (*stackIdxToMoveFrom == -1 || *stackIdxToMoveTo == -1 || *stackIdxToMoveTo >= PEGS_NUMBER || *stackIdxToMoveFrom >= PEGS_NUMBER)
     {
+
         return false;
     }
 
-    if ((peek(stacks[*stackIdxToMoveFrom], &sizes[*stackIdxToMoveFrom]) < peek(stacks[*stackIdxToMoveTo], &sizes[*stackIdxToMoveTo]) || peek(stacks[*stackIdxToMoveTo], &sizes[*stackIdxToMoveTo]) == 0) && peek(stacks[*stackIdxToMoveFrom], &sizes[*stackIdxToMoveFrom]) != 0)
+    int topFromTheStackToMoveFrom = peek(stacks[*stackIdxToMoveFrom], &sizes[*stackIdxToMoveFrom]);
+    int topFromTheStackToMoveTo = peek(stacks[*stackIdxToMoveTo], &sizes[*stackIdxToMoveTo]);
+
+    if ((topFromTheStackToMoveFrom < topFromTheStackToMoveTo || topFromTheStackToMoveTo == 0) && topFromTheStackToMoveFrom != 0)
     {
 
-        // pop disc and save it to movingDiscSize
         *movingPieceSize = pop(stacks[*stackIdxToMoveFrom], &sizes[*stackIdxToMoveFrom]);
-        int discHeight = (gfx_screenHeight() - BASE_HEIGHT) / (DISCS_NUMBER + 4);
+        int discHeight = (gfx_screenHeight() - BASE_HEIGHT) / (DISCS_NUMBER + EXTRA_SPACING);
 
-        // calculate current cords and set it to movingDiscX and movingDiscY
         *movingPieceY = gfx_screenHeight() - BASE_HEIGHT - 1 - (sizes[*stackIdxToMoveFrom] + 1) * discHeight;
         *movingPieceX = (*stackIdxToMoveFrom + 1) * gfx_screenWidth() / (PEGS_NUMBER + 1) - *movingPieceSize * (gfx_screenWidth() / (PEGS_NUMBER + 1) - PEG_WIDTH / 2) / DISCS_NUMBER / 2;
 
-        // calculate end coords and set it to finalDiscX and finalDiscX
         *finalDiscY = gfx_screenHeight() - BASE_HEIGHT - 1 - (sizes[*stackIdxToMoveTo] + 1) * discHeight;
         *finalDiscX = (*stackIdxToMoveTo + 1) * gfx_screenWidth() / (PEGS_NUMBER + 1) - *movingPieceSize * (gfx_screenWidth() / (PEGS_NUMBER + 1) - PEG_WIDTH / 2) / DISCS_NUMBER / 2;
 
-        // calculate celling and set it to celling
         *celling = discHeight;
-
-        // int pegTopYCoord = gfx_screenHeight() - (DISCS_NUMBER + 1) * discHeight;
 
         return true;
     }
@@ -152,12 +162,12 @@ bool tryMoving(int *stackIdxToMoveFrom, int *stackIdxToMoveTo, int stacks[PEGS_N
         *stackIdxToMoveTo = -1;
         *stackIdxToMoveFrom = -1;
     }
+
     return false;
 }
 
 void preparePegsForGame(int *stack, int *size)
 {
-
     for (int i = 0; i < PEGS_NUMBER; i++)
     {
         size[i] = 0;
@@ -166,11 +176,13 @@ void preparePegsForGame(int *stack, int *size)
     {
         push(discSize, stack, &size[0]);
     }
+
+    return;
 }
 
 void renderDiscs(int stacks[PEGS_NUMBER][DISCS_NUMBER], int sizes[PEGS_NUMBER])
 {
-    int discHeight = (gfx_screenHeight() - BASE_HEIGHT) / (DISCS_NUMBER + 4);
+    int discHeight = (gfx_screenHeight() - BASE_HEIGHT) / (DISCS_NUMBER + EXTRA_SPACING);
     int discScale = (gfx_screenWidth() / (PEGS_NUMBER + 1) - PEG_WIDTH / 2) / DISCS_NUMBER;
     for (int p = 1; p <= PEGS_NUMBER; p++)
     {
@@ -184,6 +196,8 @@ void renderDiscs(int stacks[PEGS_NUMBER][DISCS_NUMBER], int sizes[PEGS_NUMBER])
             discBottomCoord -= discHeight;
         }
     }
+
+    return;
 }
 void handleKeyPress(int *stackToMoveFrom, int *stackToMoveTo)
 {
@@ -195,7 +209,7 @@ void handleKeyPress(int *stackToMoveFrom, int *stackToMoveTo)
 
     // Numbers for keys from 0 to 1, have codes from 48 to 57,
     // thus instead of long switch, simple math is used to get peg number
-    // eg. 1 is pressed, then key value is 49; (49+1)%10=0 <- first peg.
+    // eg. 1 is pressed, then key value is 49; ( 49 + 1 ) % 10 = 0 <- first peg.
 
     else if (key >= 49 && key <= 57)
     {
@@ -216,15 +230,17 @@ void handleKeyPress(int *stackToMoveFrom, int *stackToMoveTo)
         }
         else
         {
-
             *stackToMoveTo = 9;
         }
     }
+
+    return;
 }
 
 bool endScreen()
 {
     gfx_textout(gfx_screenWidth() / 3, gfx_screenHeight() / 2, END_SCREEN_MESSAGE, END_SCREEN_MESSAGE_COLOR);
+
     int key = gfx_pollkey();
     if (key == ENTER_KEY_CODE)
     {
@@ -234,6 +250,7 @@ bool endScreen()
     {
         exit(3);
     }
+
     return false;
 }
 
@@ -246,9 +263,10 @@ int main()
 
     int stacks[PEGS_NUMBER][DISCS_NUMBER];
     int stackSizes[PEGS_NUMBER] = {0};
+    int gameState = PLAYING;
+
     int stackToMoveFrom = -1;
     int stackToMoveTo = -1;
-    int gameState = PLAYING;
 
     int movingPieceX = 0;
     int movingPieceY = 0;
@@ -262,8 +280,8 @@ int main()
     while (true)
     {
 
-        gfx_filledRect(0, 0, gfx_screenWidth() - 1, gfx_screenHeight() - 1,
-                       BACKGROUND_COLOR);
+        gfx_filledRect(0, 0, gfx_screenWidth() - 1, gfx_screenHeight() - 1, BACKGROUND_COLOR);
+
         if (stackSizes[PEGS_NUMBER - 1] == DISCS_NUMBER)
         {
             gameState = FINISHED;
@@ -304,15 +322,6 @@ int main()
             }
         }
 
-        for (int i = 0; i < PEGS_NUMBER; i++)
-        {
-            printf("Stack %d (size %d): ", i, stackSizes[i]);
-            for (int j = 0; j < stackSizes[i]; j++)
-            {
-                printf("%d ", stacks[i][j]);
-            }
-            printf("\n");
-        }
         gfx_updateScreen();
         SDL_Delay(10);
     }
