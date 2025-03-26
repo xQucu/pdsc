@@ -1,18 +1,20 @@
+
 #include "primlib.h"
 #include <stdio.h>
 #include <stdbool.h>
 
 // NUMBER_OF_PEGS should be no more than 10
-#define PEGS_NUMBER 3
-#define DISCS_NUMBER 3
+#define PEGS_NUMBER 7
+#define DISCS_NUMBER 50
 
 #define ENTER_KEY_CODE 13
 
 #define DISC_COLOR BLUE
+#define DISC_BORDER_COLOR WHITE
 #define PEG_COLOR RED
 #define BASE_COLOR YELLOW
 
-#define PEG_WIDTH 10
+#define PEG_WIDTH 5
 
 #define BASE_HEIGHT 10
 
@@ -20,8 +22,8 @@
 #define END_SCREEN_MESSAGE_COLOR RED
 
 #define BACKGROUND_COLOR BLACK
-#define EXTRA_SPACING 4
-#define ANIMATION_SPEED 20
+#define EXTRA_SPACING 3
+#define ANIMATION_SPEED 3
 
 enum
 {
@@ -79,11 +81,13 @@ void drawPegsAndBase()
     return;
 }
 
-bool animate(int *movingPieceX, int *movingPieceY, int movingPieceSize, int celling, int finalDiscX, int finalDiscY, int stacks[PEGS_NUMBER][DISCS_NUMBER], int stackSizes[PEGS_NUMBER], int stackToMoveTo)
+bool animate(int *movingPieceX, int *movingPieceY, int movingPieceSize, int celling, int finalDiscX, int finalDiscY,
+             int stacks[PEGS_NUMBER][DISCS_NUMBER], int stackSizes[PEGS_NUMBER], int stackToMoveTo)
 {
     int secondXCoord = *movingPieceX + movingPieceSize * (gfx_screenWidth() / (PEGS_NUMBER + 1) - PEG_WIDTH / 2) / DISCS_NUMBER;
     int secondYCoord = *movingPieceY + (gfx_screenHeight() - BASE_HEIGHT) / (DISCS_NUMBER + 4);
     gfx_filledRect(*movingPieceX, *movingPieceY, secondXCoord, secondYCoord, DISC_COLOR);
+    gfx_rect(*movingPieceX, *movingPieceY, secondXCoord, secondYCoord, DISC_BORDER_COLOR);
 
     int key = gfx_pollkey();
     if (key == SDLK_ESCAPE)
@@ -138,10 +142,20 @@ bool animate(int *movingPieceX, int *movingPieceY, int movingPieceSize, int cell
     return false;
 }
 
-bool tryMoving(int *stackIdxToMoveFrom, int *stackIdxToMoveTo, int stacks[PEGS_NUMBER][DISCS_NUMBER], int sizes[PEGS_NUMBER], int *movingPieceX, int *movingPieceY, int *movingPieceSize, int *celling, int *finalDiscX, int *finalDiscY)
+bool tryMoving(int *stackIdxToMoveFrom, int *stackIdxToMoveTo, int stacks[PEGS_NUMBER][DISCS_NUMBER], int sizes[PEGS_NUMBER],
+               int *movingPieceX, int *movingPieceY, int *movingPieceSize, int *celling, int *finalDiscX, int *finalDiscY)
 {
     if (*stackIdxToMoveFrom == -1 || *stackIdxToMoveTo == -1 || *stackIdxToMoveTo >= PEGS_NUMBER || *stackIdxToMoveFrom >= PEGS_NUMBER)
     {
+        if (*stackIdxToMoveFrom >= PEGS_NUMBER)
+        {
+            *stackIdxToMoveFrom = -1;
+        }
+        if (*stackIdxToMoveTo >= PEGS_NUMBER)
+        {
+            *stackIdxToMoveFrom = -1;
+            *stackIdxToMoveTo = -1;
+        }
 
         return false;
     }
@@ -201,6 +215,7 @@ void renderDiscs(int stacks[PEGS_NUMBER][DISCS_NUMBER], int sizes[PEGS_NUMBER])
             int discWidth = stacks[p - 1][d - 1] * discScale;
             float discLeftXCoord = pegCenterXCoord - discWidth / 2.0;
             gfx_filledRect(discLeftXCoord, discBottomCoord, discLeftXCoord + discWidth, discBottomCoord - discHeight, DISC_COLOR);
+            gfx_rect(discLeftXCoord, discBottomCoord, discLeftXCoord + discWidth, discBottomCoord - discHeight, DISC_BORDER_COLOR);
             discBottomCoord -= discHeight;
         }
     }
