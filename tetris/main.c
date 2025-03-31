@@ -1,17 +1,20 @@
 #include "primlib.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include <math.h>
 
 #define BACKGROUND_COLOR BLACK
 // It is assumed that the X number will always be set smaller than Y
-#define TILES_NUMBER_X 10
+#define TILES_NUMBER_X 20
 #define TILES_NUMBER_Y 20
 #define SIDEBAR_RATIO (1.0 / 3)
+#define PICE_SIZE 4
 
 struct tile
 {
     int x;
     int y;
+    int val;
 };
 
 struct tile board[TILES_NUMBER_X][TILES_NUMBER_Y];
@@ -183,9 +186,47 @@ void clearScreen()
     return;
 }
 
-void loadPiece()
+void loadPiece(int kind, int rotation)
 {
+    int centerOfNewPiece = (int)ceil(TILES_NUMBER_X / 2);
+    printf("TILES_NUMBER_X / 2: %d\n", TILES_NUMBER_X / 2);
+    // int startLoadingAt = centerOfNewPiece - PICE_SIZE / 2;
+    int startLoadingAt = centerOfNewPiece - 1;
+    // int startLoadingAt = 2;
+    for (int x = 0; x < 4; x++)
+    {
+        printf("startLoadingAt + x: %d\n", startLoadingAt + x);
+        printf("startLoadingAt second + x: %d\n", x + 1);
+        for (int y = 0; y < 4; y++)
+        {
+            // board[x + startLoadingAt][TILES_NUMBER_Y - 1].val = pieces[kind][rotation][x][y];
+            board[x + startLoadingAt][TILES_NUMBER_Y - y - 1].val = pieces[kind][rotation][x][y];
+            printf("%d ", board[x + startLoadingAt][TILES_NUMBER_Y - 1].val);
+            if (y == 3)
+                printf("\n");
+        }
+    }
+
     return;
+}
+
+void drawTiles()
+{
+    for (int y = 0; y < TILES_NUMBER_Y; y++)
+    {
+        for (int x = 0; x < TILES_NUMBER_X; x++)
+        {
+            struct tile currentTile = board[x][y];
+            if (currentTile.val > 0)
+            {
+                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize, RED);
+            }
+            else
+            {
+                gfx_rect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize, BLUE);
+            }
+        }
+    }
 }
 
 int main()
@@ -197,22 +238,23 @@ int main()
     sideBarWidth = gfx_screenWidth() * SIDEBAR_RATIO;
     sideBarLinePosition = gfx_screenWidth() - sideBarWidth;
     tileSize = calculateTileSize();
+    calculateTilesPosition();
 
+    loadPiece(6, 0);
     while (true)
     {
         clearScreen();
-        calculateTilesPosition();
         gfx_line(sideBarLinePosition, 0, sideBarLinePosition, gfx_screenHeight(), WHITE);
+        drawTiles();
 
-        for (int y = 0; y < TILES_NUMBER_Y; y++)
-        {
-            for (int x = 0; x < TILES_NUMBER_X; x++)
-            {
-                struct tile currentTile = board[x][y];
-                gfx_rect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize, BLUE);
-            }
-        }
-
+        // for (int y = 0; y < TILES_NUMBER_Y; y++)
+        // {
+        //     for (int x = 0; x < TILES_NUMBER_X; x++)
+        //     {
+        //         printf("%d ", board[x][y].val);
+        //     }
+        //     printf("\n");
+        // }
         gfx_updateScreen();
         SDL_Delay(10);
     }
