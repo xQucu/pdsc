@@ -5,10 +5,11 @@
 
 #define BACKGROUND_COLOR BLACK
 // It is assumed that the X number will always be set smaller than Y
-#define TILES_NUMBER_X 20
+#define TILES_NUMBER_X 10
 #define TILES_NUMBER_Y 20
 #define SIDEBAR_RATIO (1.0 / 3)
 #define PICE_SIZE 4
+#define FALLING_SPEED 1
 
 struct tile
 {
@@ -17,6 +18,16 @@ struct tile
     int val;
 };
 
+struct piece
+{
+    int Left;
+    int Top;
+    int kind;
+    int rotation;
+    int speedFactor;
+};
+
+struct piece fallingPiece;
 struct tile board[TILES_NUMBER_X][TILES_NUMBER_Y];
 int tileSize = 0;
 int sideBarLinePosition = 0;
@@ -186,28 +197,80 @@ void clearScreen()
     return;
 }
 
-void loadPiece(int kind, int rotation)
+void loadNewPiece(int kind, int rotation)
 {
     int centerOfNewPiece = (int)ceil(TILES_NUMBER_X / 2);
-    printf("TILES_NUMBER_X / 2: %d\n", TILES_NUMBER_X / 2);
-    // int startLoadingAt = centerOfNewPiece - PICE_SIZE / 2;
     int startLoadingAt = centerOfNewPiece - 1;
-    // int startLoadingAt = 2;
+
+    fallingPiece.kind = kind;
+    fallingPiece.rotation = rotation;
+    fallingPiece.Top = TILES_NUMBER_Y - 1;
+    fallingPiece.Left = startLoadingAt;
+
     for (int x = 0; x < 4; x++)
     {
-        printf("startLoadingAt + x: %d\n", startLoadingAt + x);
-        printf("startLoadingAt second + x: %d\n", x + 1);
         for (int y = 0; y < 4; y++)
         {
-            // board[x + startLoadingAt][TILES_NUMBER_Y - 1].val = pieces[kind][rotation][x][y];
-            board[x + startLoadingAt][TILES_NUMBER_Y - y - 1].val = pieces[kind][rotation][x][y];
-            printf("%d ", board[x + startLoadingAt][TILES_NUMBER_Y - 1].val);
-            if (y == 3)
-                printf("\n");
+            board[x + startLoadingAt][fallingPiece.Top - y].val = pieces[kind][rotation][y][x];
         }
     }
 
     return;
+}
+void rotate(int newRotation) {}
+
+void updateFallingPiecePosition(int pressedKey)
+{
+    for (int x = 0; x < 4; x++)
+    {
+        for (int y = 0; y <= 4; y++)
+        {
+            board[x + fallingPiece.Left][fallingPiece.Top - y].val = 0;
+        }
+    }
+
+    // printf("Falling piece position before update: TopY=%d, LeftX=%d\n", fallingPiece.Top, fallingPiece.Left);
+    fallingPiece.speedFactor += FALLING_SPEED;
+    if (fallingPiece.speedFactor / 100 > 1)
+    {
+        fallingPiece.speedFactor -= 100;
+        fallingPiece.Top--;
+    }
+    // printf("Falling piece position after update: TopY=%d, LeftX=%d\n", fallingPiece.Top, fallingPiece.Left);
+
+    printf("Falling piece Left position: %d\n", fallingPiece.Left);
+    switch (pressedKey)
+    {
+        // todo left and right move boundary check
+    case SDLK_LEFT:
+        if (fallingPiece.Left > 0)
+        {
+            fallingPiece.Left--;
+        }
+        break;
+    case SDLK_RIGHT:
+
+        fallingPiece.Left++;
+
+        break;
+    case SDLK_SPACE:
+        // rotate(fallingPiece.rotation + 1);
+        break;
+    case SDLK_DOWN:
+        /* code */
+        break;
+
+    default:
+        break;
+    }
+
+    for (int x = 0; x < 4; x++)
+    {
+        for (int y = 0; y < 4; y++)
+        {
+            board[x + fallingPiece.Left][fallingPiece.Top - y - 1].val = pieces[fallingPiece.kind][fallingPiece.rotation][y][x];
+        }
+    }
 }
 
 void drawTiles()
@@ -217,13 +280,18 @@ void drawTiles()
         for (int x = 0; x < TILES_NUMBER_X; x++)
         {
             struct tile currentTile = board[x][y];
-            if (currentTile.val > 0)
+            if (currentTile.val == 1)
             {
-                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize, RED);
+                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, BLUE);
+            }
+            else if (currentTile.val == 2)
+            {
+                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, MAGENTA);
             }
             else
             {
-                gfx_rect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize, BLUE);
+                // todo remove this grid
+                gfx_rect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize, RED);
             }
         }
     }
@@ -240,21 +308,27 @@ int main()
     tileSize = calculateTileSize();
     calculateTilesPosition();
 
-    loadPiece(6, 0);
+    loadNewPiece(1, 1);
     while (true)
     {
+        int pressedKey = gfx_pollkey();
+        if (pressedKey == SDLK_ESCAPE)
+        {
+            exit(3);
+        }
         clearScreen();
         gfx_line(sideBarLinePosition, 0, sideBarLinePosition, gfx_screenHeight(), WHITE);
         drawTiles();
+        updateFallingPiecePosition(pressedKey);
 
-        // for (int y = 0; y < TILES_NUMBER_Y; y++)
-        // {
-        //     for (int x = 0; x < TILES_NUMBER_X; x++)
-        //     {
-        //         printf("%d ", board[x][y].val);
-        //     }
-        //     printf("\n");
-        // }
+        for (int y = 0; y < TILES_NUMBER_Y; y++)
+        {
+            for (int x = 0; x < TILES_NUMBER_X; x++)
+            {
+                printf("%d ", board[x][y].val);
+            }
+            printf("\n");
+        }
         gfx_updateScreen();
         SDL_Delay(10);
     }
