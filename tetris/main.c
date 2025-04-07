@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
+#include <time.h>
 
 #define BACKGROUND_COLOR BLACK
 // It is assumed that the X number will always be set smaller than Y
@@ -10,7 +11,16 @@
 #define SIDEBAR_RATIO (1.0 / 3)
 #define PICE_SIZE 4
 #define FALLING_SPEED 1
+#define BOOST 50
+#define END_SCREEN_MESSAGE "You have failed terribly! Maybe reconsider your live choices!!! Exit(escape) or Play again(enter)"
+#define END_SCREEN_MESSAGE_COLOR RED
 
+enum gameState
+{
+    IN_PROGRESS,
+    END_SCREEN,
+    RESTARTING
+};
 struct tile
 {
     int x;
@@ -25,13 +35,24 @@ struct piece
     int kind;
     int rotation;
     int speedFactor;
+    int width;
+    int height;
+};
+
+struct coords
+{
+    int x;
+    int y;
 };
 
 struct piece fallingPiece;
 struct tile board[TILES_NUMBER_X][TILES_NUMBER_Y];
+struct coords smallGrid[4][4];
 int tileSize = 0;
 int sideBarLinePosition = 0;
 int sideBarWidth = 0;
+int gameState = IN_PROGRESS;
+int nextPiece = 0;
 // pieces definition
 char pieces[7 /*kind */][4 /* rotation */][4][4] = {
     /* square */
@@ -162,6 +183,87 @@ char pieces[7 /*kind */][4 /* rotation */][4][4] = {
          {0, 0, 0, 0},
          {0, 0, 0, 0}}}};
 
+void restartGame()
+{
+    for (int y = 0; y < TILES_NUMBER_Y; y++)
+    {
+        for (int x = 0; x < TILES_NUMBER_X; x++)
+        {
+            board[x][y].val = 0;
+        }
+    }
+    gameState = IN_PROGRESS;
+}
+
+void selectNextPiece()
+{
+    nextPiece = rand() % 7;
+}
+
+void displayFuturePiece()
+{
+    for (int y = 0; y < 4; y++)
+    {
+        for (int x = 0; x < 4; x++)
+        {
+            int xCoord = smallGrid[x][y].x;
+            int yCoord = smallGrid[x][y].y;
+
+            if (pieces[nextPiece][1][x][y] == 1)
+            {
+                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, BLUE);
+            }
+            else if (pieces[nextPiece][1][x][y] == 2)
+            {
+                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, MAGENTA);
+            }
+            else if (pieces[nextPiece][1][x][y] == 3)
+            {
+                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, YELLOW);
+            }
+            else
+            {
+                // todo remove this grid
+                gfx_rect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize, RED);
+            }
+        }
+    }
+    return;
+}
+
+void calculateSmallGridPosition()
+{
+    int leftSide = sideBarLinePosition + sideBarWidth / 2 - 2 * tileSize;
+    int tileBottomPosition = gfx_screenHeight() / 3;
+    for (int y = 0; y < 4; y++)
+    {
+        tileBottomPosition -= tileSize;
+        for (int x = 0; x < 4; x++)
+        {
+            smallGrid[x][y].x = leftSide + x * tileSize;
+            smallGrid[x][y].y = tileBottomPosition;
+        }
+    }
+
+    return;
+}
+
+void endScreen(int key)
+{
+    gfx_textout(gfx_screenWidth() / 4, gfx_screenHeight() / 2, END_SCREEN_MESSAGE, END_SCREEN_MESSAGE_COLOR);
+
+    if (key == SDLK_RETURN)
+    {
+        restartGame();
+    }
+    else if (key == SDLK_ESCAPE)
+    {
+        exit(3);
+    }
+
+    return;
+}
+
 int min(int a, int b)
 {
     if (a < b)
@@ -199,6 +301,7 @@ void clearScreen()
 
 void loadNewPiece(int kind, int rotation)
 {
+    // todo change it to not take argument and always spawn rotation 0, but random piece
     int centerOfNewPiece = (int)ceil(TILES_NUMBER_X / 2);
     int startLoadingAt = centerOfNewPiece - 1;
 
@@ -207,17 +310,126 @@ void loadNewPiece(int kind, int rotation)
     fallingPiece.Top = TILES_NUMBER_Y - 1;
     fallingPiece.Left = startLoadingAt;
 
+    int width = 0;
+    int height = 0;
+
     for (int x = 0; x < 4; x++)
     {
         for (int y = 0; y < 4; y++)
         {
-            board[x + startLoadingAt][fallingPiece.Top - y].val = pieces[kind][rotation][y][x];
+            int pieceCellValue = pieces[kind][rotation][y][x];
+            if (pieceCellValue != 0 && width < x)
+            {
+                width = x;
+            }
+            if (pieceCellValue != 0 && height < y)
+            {
+                height = y;
+            }
+            if (board[x + startLoadingAt][fallingPiece.Top - y].val != 0 && pieceCellValue)
+            {
+                gameState = END_SCREEN;
+            }
+            if (board[x + startLoadingAt][fallingPiece.Top - y].val == 0)
+            {
+                board[x + startLoadingAt][fallingPiece.Top - y].val = pieceCellValue;
+            }
         }
     }
+    fallingPiece.width = width + 1;
+    fallingPiece.height = height + 1;
 
     return;
 }
-void rotate(int newRotation) {}
+void rotate(int newRotation)
+{
+    newRotation = newRotation > 3 ? 0 : newRotation;
+    int prevCenterX = 0;
+    int prevCenterY = 0;
+    int newCenterX = 0;
+    int newCenterY = 0;
+    for (int x = 0; x < 4; x++)
+    {
+        for (int y = 0; y < 4; y++)
+        {
+            if (pieces[fallingPiece.kind][fallingPiece.rotation][y][x] == 2)
+            {
+                prevCenterX = x;
+                prevCenterY = y;
+            }
+            if (pieces[fallingPiece.kind][newRotation][y][x] == 2)
+            {
+                newCenterX = x;
+                newCenterY = y;
+            }
+        }
+    }
+    int newLeft = fallingPiece.Left + prevCenterX - newCenterX;
+    int newTop = fallingPiece.Top - prevCenterY - newCenterY;
+    if (newLeft < 0 || newLeft + fallingPiece.height > TILES_NUMBER_X)
+    {
+        return;
+    }
+
+    if (newTop + fallingPiece.width > TILES_NUMBER_Y || newTop <= 0)
+    {
+        return;
+    }
+
+    printf("New Top: %d\n", newTop);
+
+    for (int x = 0; x < 4; x++)
+    {
+        for (int y = 0; y < 4; y++)
+        {
+
+            if (x + fallingPiece.Left < TILES_NUMBER_X && (fallingPiece.Top - y < 0 || board[x + fallingPiece.Left][fallingPiece.Top - y].val == 3))
+            {
+                // return;
+                // board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][y][x] != 0 ? 3 : 0;
+            }
+        }
+    }
+    // for (int x = 0; x < 4; x++)
+    // {
+    //     for (int y = 0; y <= 4; y++)
+    //     {
+    //         if (newTop - y > 0 && x + newLeft < TILES_NUMBER_X && newTop - y < TILES_NUMBER_Y && board[x + newLeft][newTop - y].val != 3)
+    //         {
+    //             if (board[x + newLeft][newTop - y].val != 0)
+    //             {
+    //                 return;
+    //             }
+    //         }
+    //     }
+    // }
+    fallingPiece.Left += prevCenterX - newCenterX;
+    fallingPiece.Top -= prevCenterY - newCenterY;
+    fallingPiece.rotation = newRotation;
+    int tmp = fallingPiece.height;
+    fallingPiece.height = fallingPiece.width;
+    fallingPiece.width = tmp;
+    // printf("Falling piece width: %d, height: %d\n", fallingPiece.width, fallingPiece.height);
+    // printf("Previous center: X=%d, Y=%d\n", prevCenterX, prevCenterY);
+    // printf("Previous center: X=%d, Y=%d\n", newCenterX, newCenterY);
+}
+
+void stopPiece()
+{
+    printf("Pice is Stopped\n");
+    for (int x = 0; x < 4; x++)
+    {
+        for (int y = 0; y < 4; y++)
+        {
+            if (x + fallingPiece.Left < TILES_NUMBER_X && !(fallingPiece.Top - y < 0 || board[x + fallingPiece.Left][fallingPiece.Top - y].val))
+            {
+                board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][y][x] != 0 ? 3 : 0;
+            }
+        }
+    }
+    loadNewPiece(nextPiece, 0);
+    selectNextPiece();
+}
 
 void updateFallingPiecePosition(int pressedKey)
 {
@@ -225,20 +437,18 @@ void updateFallingPiecePosition(int pressedKey)
     {
         for (int y = 0; y <= 4; y++)
         {
-            board[x + fallingPiece.Left][fallingPiece.Top - y].val = 0;
+            if (fallingPiece.Top - y > 0 && x + fallingPiece.Left < TILES_NUMBER_X && fallingPiece.Top - y < TILES_NUMBER_Y && board[x + fallingPiece.Left][fallingPiece.Top - y].val != 3)
+            {
+                board[x + fallingPiece.Left][fallingPiece.Top - y].val = 0;
+            }
         }
     }
 
     // printf("Falling piece position before update: TopY=%d, LeftX=%d\n", fallingPiece.Top, fallingPiece.Left);
-    fallingPiece.speedFactor += FALLING_SPEED;
-    if (fallingPiece.speedFactor / 100 > 1)
-    {
-        fallingPiece.speedFactor -= 100;
-        fallingPiece.Top--;
-    }
+
     // printf("Falling piece position after update: TopY=%d, LeftX=%d\n", fallingPiece.Top, fallingPiece.Left);
 
-    printf("Falling piece Left position: %d\n", fallingPiece.Left);
+    // printf("Falling piece Left position: %d\n", fallingPiece.Left);
     switch (pressedKey)
     {
         // todo left and right move boundary check
@@ -249,26 +459,62 @@ void updateFallingPiecePosition(int pressedKey)
         }
         break;
     case SDLK_RIGHT:
-
-        fallingPiece.Left++;
+        if (fallingPiece.Left + fallingPiece.width < TILES_NUMBER_X)
+        {
+            fallingPiece.Left++;
+        }
 
         break;
     case SDLK_SPACE:
-        // rotate(fallingPiece.rotation + 1);
+        rotate(fallingPiece.rotation + 1);
         break;
     case SDLK_DOWN:
-        /* code */
+
+        fallingPiece.speedFactor += FALLING_SPEED * BOOST;
         break;
 
     default:
         break;
     }
 
+    fallingPiece.speedFactor += FALLING_SPEED;
+    if (fallingPiece.speedFactor / 100 > 1)
+    {
+        fallingPiece.speedFactor -= 100;
+        fallingPiece.Top--;
+    }
+    // printf("Falling piece position: TopY=%d, LeftX=%d, TOP-HEIGHT: %d\n", fallingPiece.Top, fallingPiece.Left, fallingPiece.Top - fallingPiece.height);
+    if (fallingPiece.Top - fallingPiece.height == -1)
+    {
+        stopPiece();
+        return;
+    }
+
     for (int x = 0; x < 4; x++)
     {
         for (int y = 0; y < 4; y++)
         {
-            board[x + fallingPiece.Left][fallingPiece.Top - y - 1].val = pieces[fallingPiece.kind][fallingPiece.rotation][y][x];
+            // printf("board[%d][%d].val = %d\n", x + fallingPiece.Left, fallingPiece.Top - y, board[x + fallingPiece.Left][fallingPiece.Top - y].val);
+            // if (x + fallingPiece.Left == -1 || fallingPiece.Top - y - 1 == -1)
+            // {
+            //     exit(3);
+            // }
+            if (fallingPiece.Top - y - 1 >= 0 && x + fallingPiece.Left < TILES_NUMBER_X && board[x + fallingPiece.Left][fallingPiece.Top - y - 1].val == 3 && pieces[fallingPiece.kind][fallingPiece.rotation][y][x] != 0)
+            {
+                stopPiece();
+                return;
+            }
+        }
+    }
+
+    for (int x = 0; x < 4; x++)
+    {
+        for (int y = 0; y < 4; y++)
+        {
+            if (x + fallingPiece.Left < TILES_NUMBER_X && (!(fallingPiece.Top - y < 0 || board[x + fallingPiece.Left][fallingPiece.Top - y].val)))
+            {
+                board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][y][x];
+            }
         }
     }
 }
@@ -287,6 +533,10 @@ void drawTiles()
             else if (currentTile.val == 2)
             {
                 gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, MAGENTA);
+            }
+            else if (currentTile.val == 3)
+            {
+                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, YELLOW);
             }
             else
             {
@@ -307,8 +557,12 @@ int main()
     sideBarLinePosition = gfx_screenWidth() - sideBarWidth;
     tileSize = calculateTileSize();
     calculateTilesPosition();
+    calculateSmallGridPosition();
 
-    loadNewPiece(1, 1);
+    srand(time(NULL));
+    loadNewPiece(nextPiece, 0);
+    selectNextPiece();
+
     while (true)
     {
         int pressedKey = gfx_pollkey();
@@ -317,18 +571,31 @@ int main()
             exit(3);
         }
         clearScreen();
-        gfx_line(sideBarLinePosition, 0, sideBarLinePosition, gfx_screenHeight(), WHITE);
-        drawTiles();
-        updateFallingPiecePosition(pressedKey);
 
-        for (int y = 0; y < TILES_NUMBER_Y; y++)
+        switch (gameState)
         {
-            for (int x = 0; x < TILES_NUMBER_X; x++)
-            {
-                printf("%d ", board[x][y].val);
-            }
-            printf("\n");
+
+        case IN_PROGRESS:
+            gfx_line(sideBarLinePosition, 0, sideBarLinePosition, gfx_screenHeight(), WHITE);
+            drawTiles();
+            updateFallingPiecePosition(pressedKey);
+            displayFuturePiece();
+            break;
+        case END_SCREEN:
+            endScreen(pressedKey);
+            break;
+        default:
+            break;
         }
+
+        // for (int y = 0; y < TILES_NUMBER_Y; y++)
+        // {
+        //     for (int x = 0; x < TILES_NUMBER_X; x++)
+        //     {
+        //         printf("%d ", board[x][y].val);
+        //     }
+        //     printf("\n");
+        // }
         gfx_updateScreen();
         SDL_Delay(10);
     }
