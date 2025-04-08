@@ -24,6 +24,7 @@
 #define FALLING_PIECE_COLOR CYAN
 #define RESTING_PIECE_COLOR RED
 #define FALLING_PIECE_CENTER_COLOR MAGENTA
+#define SIDE_LINES_COLOR BLUE
 
 enum gameState
 {
@@ -328,7 +329,6 @@ void clearScreen()
 
 void loadNewPiece()
 {
-    // todo change it to not take argument and always spawn rotation 0, but random piece
     int centerOfNewPiece = (int)ceil(TILES_NUMBER_X / 2);
     int startLoadingAt = centerOfNewPiece - 1;
 
@@ -427,6 +427,46 @@ void rotate(int newRotation)
     return;
 }
 
+void clearRowAndShiftElementsDown(int removedRow)
+{
+    for (int y = removedRow; y < TILES_NUMBER_Y - 1; y++)
+    {
+        for (int x = 0; x < TILES_NUMBER_X; x++)
+        {
+            board[x][y].val = board[x][y + 1].val;
+        }
+    }
+}
+
+void checkFullRows()
+{
+    bool rowsClear = false;
+    while (!rowsClear)
+    {
+        rowsClear = true;
+        for (int y = 0; y < TILES_NUMBER_Y; y++)
+        {
+            int sum = 0;
+            for (int x = 0; x < TILES_NUMBER_X; x++)
+            {
+                int tileValue = board[x][y].val;
+                if (tileValue != 0)
+                {
+                    sum++;
+                }
+            }
+            if (sum == TILES_NUMBER_X)
+            {
+                clearRowAndShiftElementsDown(y);
+                rowsClear = false;
+                break;
+            }
+        }
+    }
+
+    return;
+}
+
 void stopPiece()
 {
     printf("Pice is Stopped\n");
@@ -440,6 +480,8 @@ void stopPiece()
             }
         }
     }
+
+    checkFullRows();
     loadNewPiece();
     selectNextPiece();
 
@@ -523,7 +565,11 @@ void updateFallingPiecePosition(int pressedKey)
 
     return;
 }
-
+void drawSideLines()
+{
+    gfx_line(board[0][0].x, board[0][0].y + tileSize, board[0][TILES_NUMBER_Y - 1].x, board[0][TILES_NUMBER_Y - 1].y, SIDE_LINES_COLOR);
+    gfx_line(board[TILES_NUMBER_X - 1][0].x + tileSize, board[0][0].y + tileSize, board[TILES_NUMBER_X - 1][TILES_NUMBER_Y - 1].x + tileSize, board[0][TILES_NUMBER_Y - 1].y, SIDE_LINES_COLOR);
+}
 void drawTiles()
 {
     for (int x = 0; x < TILES_NUMBER_X; x++)
@@ -535,6 +581,7 @@ void drawTiles()
             drawTile(currentTile.val, x, y, currentTile.x, currentTile.y);
         }
     }
+    drawSideLines();
 
     return;
 }
