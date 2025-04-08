@@ -13,7 +13,6 @@
 
 #define PIECE_SIZE 4
 #define PIECE_ROTATIONS 4
-#define INITIAL_PIECE_ROTATION 0
 #define PIECE_KINDS 7
 
 #define FALLING_SPEED 1
@@ -64,6 +63,7 @@ int sideBarLinePosition = 0;
 int sideBarWidth = 0;
 int gameState = IN_PROGRESS;
 int nextPiece = 0;
+int nextPieceRotation = 0;
 
 char pieces[PIECE_KINDS /*kind */][PIECE_ROTATIONS /* rotation */][PIECE_SIZE][PIECE_SIZE] = {
     /* square */
@@ -197,6 +197,7 @@ char pieces[PIECE_KINDS /*kind */][PIECE_ROTATIONS /* rotation */][PIECE_SIZE][P
 void selectNextPiece()
 {
     nextPiece = rand() % PIECE_KINDS;
+    nextPieceRotation = rand() % PIECE_ROTATIONS;
 
     return;
 }
@@ -216,18 +217,18 @@ void restartGame()
     return;
 }
 
-void drawTile(){}
+void drawTile() {}
 
 void displayFuturePiece()
 {
-    for (int y = 0; y < PIECE_SIZE; y++)
+    for (int x = 0; x < PIECE_SIZE; x++)
     {
-        for (int x = 0; x < PIECE_SIZE; x++)
+        for (int y = 0; y < PIECE_SIZE; y++)
         {
-            int xCoord = smallGrid[x][y].x;
-            int yCoord = smallGrid[x][y].y;
+            int xCoord = smallGrid[x][PIECE_SIZE - 1 - y].x;
+            int yCoord = smallGrid[x][PIECE_SIZE - 1 - y].y;
 
-            switch (pieces[nextPiece][1][x][y])
+            switch (pieces[nextPiece][nextPieceRotation][x][y])
             {
             case 1:
                 gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, FALLING_PIECE_COLOR);
@@ -329,7 +330,7 @@ void loadNewPiece()
     int startLoadingAt = centerOfNewPiece - 1;
 
     fallingPiece.kind = nextPiece;
-    fallingPiece.rotation = INITIAL_PIECE_ROTATION;
+    fallingPiece.rotation = nextPieceRotation;
     fallingPiece.Top = TILES_NUMBER_Y - 1;
     fallingPiece.Left = startLoadingAt;
 
@@ -340,7 +341,7 @@ void loadNewPiece()
     {
         for (int y = 0; y < PIECE_SIZE; y++)
         {
-            int pieceCellValue = pieces[nextPiece][INITIAL_PIECE_ROTATION][y][x];
+            int pieceCellValue = pieces[nextPiece][nextPieceRotation][x][y];
             if (pieceCellValue != 0 && width < x)
             {
                 width = x;
@@ -377,12 +378,12 @@ void rotate(int newRotation)
     {
         for (int y = 0; y < PIECE_SIZE; y++)
         {
-            if (pieces[fallingPiece.kind][fallingPiece.rotation][y][x] == 2)
+            if (pieces[fallingPiece.kind][fallingPiece.rotation][x][y] == 2)
             {
                 prevCenterX = x;
                 prevCenterY = y;
             }
-            if (pieces[fallingPiece.kind][newRotation][y][x] == 2)
+            if (pieces[fallingPiece.kind][newRotation][x][y] == 2)
             {
                 newCenterX = x;
                 newCenterY = y;
@@ -409,7 +410,7 @@ void rotate(int newRotation)
             if (x + fallingPiece.Left < TILES_NUMBER_X && (fallingPiece.Top - y < 0 || board[x + fallingPiece.Left][fallingPiece.Top - y].val == 3))
             {
                 // return;
-                // board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][y][x] != 0 ? 3 : 0;
+                // board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][x][y] != 0 ? 3 : 0;
             }
         }
     }
@@ -432,7 +433,7 @@ void stopPiece()
         {
             if (x + fallingPiece.Left < TILES_NUMBER_X && !(fallingPiece.Top - y < 0 || board[x + fallingPiece.Left][fallingPiece.Top - y].val))
             {
-                board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][y][x] != 0 ? 3 : 0;
+                board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][x][y] != 0 ? 3 : 0;
             }
         }
     }
@@ -498,7 +499,7 @@ void updateFallingPiecePosition(int pressedKey)
     {
         for (int y = 0; y < PIECE_SIZE; y++)
         {
-            if (fallingPiece.Top - y - 1 >= 0 && x + fallingPiece.Left < TILES_NUMBER_X && board[x + fallingPiece.Left][fallingPiece.Top - y - 1].val == 3 && pieces[fallingPiece.kind][fallingPiece.rotation][y][x] != 0)
+            if (fallingPiece.Top - y - 1 >= 0 && x + fallingPiece.Left < TILES_NUMBER_X && board[x + fallingPiece.Left][fallingPiece.Top - y - 1].val == 3 && pieces[fallingPiece.kind][fallingPiece.rotation][x][y] != 0)
             {
                 stopPiece();
                 return;
@@ -512,7 +513,7 @@ void updateFallingPiecePosition(int pressedKey)
         {
             if (x + fallingPiece.Left < TILES_NUMBER_X && (!(fallingPiece.Top - y < 0 || board[x + fallingPiece.Left][fallingPiece.Top - y].val)))
             {
-                board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][y][x];
+                board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][x][y];
             }
         }
     }
