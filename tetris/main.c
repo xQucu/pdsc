@@ -409,11 +409,15 @@ void rotate(int newRotation)
     {
         for (int y = 0; y < PIECE_SIZE; y++)
         {
+            int newX = newLeft + x;
+            int newY = newTop - y;
 
-            if (x + fallingPiece.Left < TILES_NUMBER_X && (fallingPiece.Top - y < 0 || board[x + fallingPiece.Left][fallingPiece.Top - y].val == 3))
+            if (pieces[fallingPiece.kind][newRotation][x][y] != 0)
             {
-                // return;
-                // board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][x][y] != 0 ? 3 : 0;
+                if (newX < 0 || newX >= TILES_NUMBER_X || newY < 0 || newY >= TILES_NUMBER_Y || board[newX][newY].val == 3)
+                {
+                    return;
+                }
             }
         }
     }
@@ -487,7 +491,19 @@ void stopPiece()
 
     return;
 }
-
+void redrawPiece()
+{
+    for (int x = 0; x < PIECE_SIZE; x++)
+    {
+        for (int y = 0; y < PIECE_SIZE; y++)
+        {
+            if (x + fallingPiece.Left < TILES_NUMBER_X && (!(fallingPiece.Top - y < 0 || board[x + fallingPiece.Left][fallingPiece.Top - y].val)))
+            {
+                board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][x][y];
+            }
+        }
+    }
+}
 void updateFallingPiecePosition(int pressedKey)
 {
     for (int x = 0; x < PIECE_SIZE; x++)
@@ -507,12 +523,47 @@ void updateFallingPiecePosition(int pressedKey)
     case SDLK_LEFT:
         if (fallingPiece.Left > 0)
         {
+            for (int x = 0; x < PIECE_SIZE; x++)
+            {
+                for (int y = 0; y < PIECE_SIZE; y++)
+                {
+                    if (pieces[fallingPiece.kind][fallingPiece.rotation][x][y] != 0)
+                    {
+                        int newX = fallingPiece.Left + x - 1;
+                        int newY = fallingPiece.Top - y;
+
+                        if (newX >= 0 && newY >= 0 && board[newX][newY].val == 3)
+                        {
+                            redrawPiece();
+                            return;
+                        }
+                    }
+                }
+            }
             fallingPiece.Left--;
         }
         break;
     case SDLK_RIGHT:
+
         if (fallingPiece.Left + fallingPiece.width < TILES_NUMBER_X)
         {
+            for (int x = 0; x < PIECE_SIZE; x++)
+            {
+                for (int y = 0; y < PIECE_SIZE; y++)
+                {
+                    if (pieces[fallingPiece.kind][fallingPiece.rotation][x][y] != 0)
+                    {
+                        int newX = fallingPiece.Left + x + 1;
+                        int newY = fallingPiece.Top - y;
+
+                        if (newX < TILES_NUMBER_X && newY >= 0 && board[newX][newY].val == 3)
+                        {
+                            redrawPiece();
+                            return;
+                        }
+                    }
+                }
+            }
             fallingPiece.Left++;
         }
 
@@ -554,19 +605,11 @@ void updateFallingPiecePosition(int pressedKey)
         }
     }
 
-    for (int x = 0; x < PIECE_SIZE; x++)
-    {
-        for (int y = 0; y < PIECE_SIZE; y++)
-        {
-            if (x + fallingPiece.Left < TILES_NUMBER_X && (!(fallingPiece.Top - y < 0 || board[x + fallingPiece.Left][fallingPiece.Top - y].val)))
-            {
-                board[x + fallingPiece.Left][fallingPiece.Top - y].val = pieces[fallingPiece.kind][fallingPiece.rotation][x][y];
-            }
-        }
-    }
+    redrawPiece();
 
     return;
 }
+
 void drawSideLines()
 {
     gfx_line(board[0][0].x, board[0][0].y + tileSize, board[0][TILES_NUMBER_Y - 1].x, board[0][TILES_NUMBER_Y - 1].y, SIDE_LINES_COLOR);
