@@ -217,7 +217,26 @@ void restartGame()
     return;
 }
 
-void drawTile() {}
+void drawTile(int tileValue, int x, int y, int xCoord, int yCoord)
+{
+    switch (tileValue)
+    {
+    case 1:
+        gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, FALLING_PIECE_COLOR);
+        break;
+    case 2:
+        gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, FALLING_PIECE_CENTER_COLOR);
+        break;
+    case 3:
+        gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, RESTING_PIECE_COLOR);
+        break;
+
+    // todo remove this
+    default:
+        gfx_rect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize, RED);
+        break;
+    }
+}
 
 void displayFuturePiece()
 {
@@ -228,23 +247,7 @@ void displayFuturePiece()
             int xCoord = smallGrid[x][PIECE_SIZE - 1 - y].x;
             int yCoord = smallGrid[x][PIECE_SIZE - 1 - y].y;
 
-            switch (pieces[nextPiece][nextPieceRotation][x][y])
-            {
-            case 1:
-                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, FALLING_PIECE_COLOR);
-                break;
-            case 2:
-                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, FALLING_PIECE_CENTER_COLOR);
-                break;
-            case 3:
-                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, RESTING_PIECE_COLOR);
-                break;
-
-            // todo remove this
-            default:
-                gfx_rect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize, RED);
-                break;
-            }
+            drawTile(pieces[nextPiece][nextPieceRotation][x][y], x, y, xCoord, yCoord);
         }
     }
 
@@ -523,28 +526,13 @@ void updateFallingPiecePosition(int pressedKey)
 
 void drawTiles()
 {
-    for (int y = 0; y < TILES_NUMBER_Y; y++)
+    for (int x = 0; x < TILES_NUMBER_X; x++)
     {
-        for (int x = 0; x < TILES_NUMBER_X; x++)
+        for (int y = 0; y < TILES_NUMBER_Y; y++)
         {
             struct tile currentTile = board[x][y];
-            if (currentTile.val == 1)
-            {
-                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, FALLING_PIECE_COLOR);
-            }
-            else if (currentTile.val == 2)
-            {
-                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, FALLING_PIECE_CENTER_COLOR);
-            }
-            else if (currentTile.val == 3)
-            {
-                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, RESTING_PIECE_COLOR);
-            }
-            else
-            {
-                // todo remove this grid
-                gfx_rect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize, RED);
-            }
+
+            drawTile(currentTile.val, x, y, currentTile.x, currentTile.y);
         }
     }
 
