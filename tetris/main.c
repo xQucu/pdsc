@@ -492,7 +492,6 @@ void stopPiece()
     checkFullRows();
     loadNewPiece();
     selectNextPiece();
-    selectNextPiece();
     return;
 }
 void redrawPiece()
@@ -672,8 +671,6 @@ int main()
             break;
         case END_SCREEN:
             endScreen(pressedKey);
-            break;
-        default:
             break;
         }
 
