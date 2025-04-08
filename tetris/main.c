@@ -9,11 +9,22 @@
 #define TILES_NUMBER_X 10
 #define TILES_NUMBER_Y 20
 #define SIDEBAR_RATIO (1.0 / 3)
+#define NEXT_PIECE_DISPLAY_POSITION 3
+
 #define PIECE_SIZE 4
+#define PIECE_ROTATIONS 4
+#define INITIAL_PIECE_ROTATION 0
+#define PIECE_KINDS 7
+
 #define FALLING_SPEED 1
 #define BOOST 50
+
 #define END_SCREEN_MESSAGE "You have failed terribly! Maybe reconsider your live choices!!! Exit(escape) or Play again(enter)"
+
 #define END_SCREEN_MESSAGE_COLOR RED
+#define FALLING_PIECE_COLOR CYAN
+#define RESTING_PIECE_COLOR RED
+#define FALLING_PIECE_CENTER_COLOR MAGENTA
 
 enum gameState
 {
@@ -53,8 +64,8 @@ int sideBarLinePosition = 0;
 int sideBarWidth = 0;
 int gameState = IN_PROGRESS;
 int nextPiece = 0;
-// pieces definition
-char pieces[7 /*kind */][PIECE_SIZE /* rotation */][PIECE_SIZE][PIECE_SIZE] = {
+
+char pieces[PIECE_KINDS /*kind */][PIECE_ROTATIONS /* rotation */][PIECE_SIZE][PIECE_SIZE] = {
     /* square */
     {
         {{2, 1, 0, 0},
@@ -183,6 +194,13 @@ char pieces[7 /*kind */][PIECE_SIZE /* rotation */][PIECE_SIZE][PIECE_SIZE] = {
          {0, 0, 0, 0},
          {0, 0, 0, 0}}}};
 
+void selectNextPiece()
+{
+    nextPiece = rand() % PIECE_KINDS;
+
+    return;
+}
+
 void restartGame()
 {
     for (int y = 0; y < TILES_NUMBER_Y; y++)
@@ -193,12 +211,12 @@ void restartGame()
         }
     }
     gameState = IN_PROGRESS;
+    selectNextPiece();
+
+    return;
 }
 
-void selectNextPiece()
-{
-    nextPiece = rand() % 7;
-}
+void drawTile(){}
 
 void displayFuturePiece()
 {
@@ -209,32 +227,33 @@ void displayFuturePiece()
             int xCoord = smallGrid[x][y].x;
             int yCoord = smallGrid[x][y].y;
 
-            if (pieces[nextPiece][1][x][y] == 1)
+            switch (pieces[nextPiece][1][x][y])
             {
-                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, BLUE);
-            }
-            else if (pieces[nextPiece][1][x][y] == 2)
-            {
-                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, MAGENTA);
-            }
-            else if (pieces[nextPiece][1][x][y] == 3)
-            {
-                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, YELLOW);
-            }
-            else
-            {
-                // todo remove this grid
+            case 1:
+                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, FALLING_PIECE_COLOR);
+                break;
+            case 2:
+                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, FALLING_PIECE_CENTER_COLOR);
+                break;
+            case 3:
+                gfx_filledRect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize - 1, RESTING_PIECE_COLOR);
+                break;
+
+            // todo remove this
+            default:
                 gfx_rect(xCoord, yCoord, xCoord + tileSize, yCoord + tileSize, RED);
+                break;
             }
         }
     }
+
     return;
 }
 
 void calculateSmallGridPosition()
 {
-    int leftSide = sideBarLinePosition + sideBarWidth / 2 - 2 * tileSize;
-    int tileBottomPosition = gfx_screenHeight() / 3;
+    int leftSide = sideBarLinePosition + sideBarWidth / 2 - PIECE_SIZE / 2 * tileSize;
+    int tileBottomPosition = gfx_screenHeight() / NEXT_PIECE_DISPLAY_POSITION;
     for (int y = 0; y < PIECE_SIZE; y++)
     {
         tileBottomPosition -= tileSize;
@@ -278,6 +297,7 @@ int calculateTileSize()
 {
     return gfx_screenHeight() / TILES_NUMBER_Y;
 }
+
 void calculateTilesPosition()
 {
     int boardLeftSidePosition = (gfx_screenWidth() - sideBarWidth) / 2 - TILES_NUMBER_X * tileSize / 2;
@@ -291,22 +311,25 @@ void calculateTilesPosition()
             board[x][y].y = tileBottomPosition;
         }
     }
-    return;
-}
-void clearScreen()
-{
-    gfx_filledRect(0, 0, gfx_screenWidth() - 1, gfx_screenHeight() - 1, BACKGROUND_COLOR);
+
     return;
 }
 
-void loadNewPiece(int kind, int rotation)
+void clearScreen()
+{
+    gfx_filledRect(0, 0, gfx_screenWidth() - 1, gfx_screenHeight() - 1, BACKGROUND_COLOR);
+
+    return;
+}
+
+void loadNewPiece()
 {
     // todo change it to not take argument and always spawn rotation 0, but random piece
     int centerOfNewPiece = (int)ceil(TILES_NUMBER_X / 2);
     int startLoadingAt = centerOfNewPiece - 1;
 
-    fallingPiece.kind = kind;
-    fallingPiece.rotation = rotation;
+    fallingPiece.kind = nextPiece;
+    fallingPiece.rotation = INITIAL_PIECE_ROTATION;
     fallingPiece.Top = TILES_NUMBER_Y - 1;
     fallingPiece.Left = startLoadingAt;
 
@@ -317,7 +340,7 @@ void loadNewPiece(int kind, int rotation)
     {
         for (int y = 0; y < PIECE_SIZE; y++)
         {
-            int pieceCellValue = pieces[kind][rotation][y][x];
+            int pieceCellValue = pieces[nextPiece][INITIAL_PIECE_ROTATION][y][x];
             if (pieceCellValue != 0 && width < x)
             {
                 width = x;
@@ -329,6 +352,7 @@ void loadNewPiece(int kind, int rotation)
             if (board[x + startLoadingAt][fallingPiece.Top - y].val != 0 && pieceCellValue)
             {
                 gameState = END_SCREEN;
+                return;
             }
             if (board[x + startLoadingAt][fallingPiece.Top - y].val == 0)
             {
@@ -341,9 +365,10 @@ void loadNewPiece(int kind, int rotation)
 
     return;
 }
+
 void rotate(int newRotation)
 {
-    newRotation = newRotation > 3 ? 0 : newRotation;
+    newRotation = newRotation > PIECE_ROTATIONS - 1 ? 0 : newRotation;
     int prevCenterX = 0;
     int prevCenterY = 0;
     int newCenterX = 0;
@@ -394,6 +419,8 @@ void rotate(int newRotation)
     int tmp = fallingPiece.height;
     fallingPiece.height = fallingPiece.width;
     fallingPiece.width = tmp;
+
+    return;
 }
 
 void stopPiece()
@@ -409,8 +436,10 @@ void stopPiece()
             }
         }
     }
-    loadNewPiece(nextPiece, 0);
+    loadNewPiece();
     selectNextPiece();
+
+    return;
 }
 
 void updateFallingPiecePosition(int pressedKey)
@@ -428,7 +457,6 @@ void updateFallingPiecePosition(int pressedKey)
 
     switch (pressedKey)
     {
-        // todo left and right move boundary check
     case SDLK_LEFT:
         if (fallingPiece.Left > 0)
         {
@@ -488,6 +516,8 @@ void updateFallingPiecePosition(int pressedKey)
             }
         }
     }
+
+    return;
 }
 
 void drawTiles()
@@ -499,15 +529,15 @@ void drawTiles()
             struct tile currentTile = board[x][y];
             if (currentTile.val == 1)
             {
-                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, BLUE);
+                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, FALLING_PIECE_COLOR);
             }
             else if (currentTile.val == 2)
             {
-                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, MAGENTA);
+                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, FALLING_PIECE_CENTER_COLOR);
             }
             else if (currentTile.val == 3)
             {
-                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, YELLOW);
+                gfx_filledRect(currentTile.x, currentTile.y, currentTile.x + tileSize, currentTile.y + tileSize - 1, RESTING_PIECE_COLOR);
             }
             else
             {
@@ -516,6 +546,8 @@ void drawTiles()
             }
         }
     }
+
+    return;
 }
 
 int main()
@@ -532,7 +564,7 @@ int main()
 
     srand(time(NULL));
     selectNextPiece();
-    loadNewPiece(nextPiece, 0);
+    loadNewPiece();
     selectNextPiece();
 
     while (true)
