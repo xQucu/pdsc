@@ -494,7 +494,8 @@ void updateFallingPiecePosition(int pressedKey)
     {
         for (int y = 0; y <= PIECE_SIZE; y++)
         {
-            if (fallingPiece.Top - y > 0 && x + fallingPiece.Left < TILES_NUMBER_X && fallingPiece.Top - y < TILES_NUMBER_Y && board[x + fallingPiece.Left][fallingPiece.Top - y].val != 3)
+            if (fallingPiece.Top - y > 0 && x + fallingPiece.Left < TILES_NUMBER_X &&
+                fallingPiece.Top - y < TILES_NUMBER_Y && board[x + fallingPiece.Left][fallingPiece.Top - y].val != 3)
             {
                 board[x + fallingPiece.Left][fallingPiece.Top - y].val = 0;
             }
@@ -544,7 +545,8 @@ void updateFallingPiecePosition(int pressedKey)
     {
         for (int y = 0; y < PIECE_SIZE; y++)
         {
-            if (fallingPiece.Top - y - 1 >= 0 && x + fallingPiece.Left < TILES_NUMBER_X && board[x + fallingPiece.Left][fallingPiece.Top - y - 1].val == 3 && pieces[fallingPiece.kind][fallingPiece.rotation][x][y] != 0)
+            if (fallingPiece.Top - y - 1 >= 0 && x + fallingPiece.Left < TILES_NUMBER_X &&
+                board[x + fallingPiece.Left][fallingPiece.Top - y - 1].val == 3 && pieces[fallingPiece.kind][fallingPiece.rotation][x][y] != 0)
             {
                 stopPiece();
                 return;
@@ -568,7 +570,8 @@ void updateFallingPiecePosition(int pressedKey)
 void drawSideLines()
 {
     gfx_line(board[0][0].x, board[0][0].y + tileSize, board[0][TILES_NUMBER_Y - 1].x, board[0][TILES_NUMBER_Y - 1].y, SIDE_LINES_COLOR);
-    gfx_line(board[TILES_NUMBER_X - 1][0].x + tileSize, board[0][0].y + tileSize, board[TILES_NUMBER_X - 1][TILES_NUMBER_Y - 1].x + tileSize, board[0][TILES_NUMBER_Y - 1].y, SIDE_LINES_COLOR);
+    gfx_line(board[TILES_NUMBER_X - 1][0].x + tileSize, board[0][0].y + tileSize,
+             board[TILES_NUMBER_X - 1][TILES_NUMBER_Y - 1].x + tileSize, board[0][TILES_NUMBER_Y - 1].y, SIDE_LINES_COLOR);
 }
 void drawTiles()
 {
