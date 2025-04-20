@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "*.templ": "templ",
+    "stdlib.h": "c"
+  }
+}
