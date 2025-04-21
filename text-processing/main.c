@@ -3,31 +3,6 @@
 #include <string.h>
 #include <strings.h>
 
-// char *getLines()
-// {
-//     char c;
-//     char *lines = malloc(1);
-//     if (lines == NULL)
-//     {
-//         printf("ERROR when allocating memory\n");
-//         exit(EXIT_FAILURE);
-//     }
-
-//     while ((c = getchar()) != EOF)
-//     {
-//         if ((char)c == '\n')
-//         {
-//             printf("NEW LINE\n");
-//             continue;
-//         }
-
-//         printf("The char is: %c\n", (char)c);
-//     }
-
-//     printf("EOF\n");
-//     return NULL;
-// }
-
 char *getLine()
 {
     char *line = NULL;
@@ -141,13 +116,6 @@ char **readLines(size_t *noLinesPtr)
         lines[noLines++] = line;
     }
 
-    // for (i = 0; i < noLines; i++)
-    // {
-    //     printf("%s", lines[i]);
-    //     free(lines[i]);
-    // }
-    // free(lines);
-
     *noLinesPtr = noLines;
     return lines;
 
@@ -187,13 +155,14 @@ void addLines(char *line, char **sum)
         {
             if ((*sum)[i] == '1')
             {
-                newSumSize = strlen(*sum) - i;
+                if (strlen(*sum) - i > newSumSize)
+                {
+                    newSumSize = strlen(*sum) - i;
+                }
                 break;
             }
         }
     }
-
-    printf("newSumSize: %d\n", newSumSize);
 
     int temp = 0;
     char *newSum = malloc((newSumSize + 1) * __SIZEOF_WCHAR_T__);
@@ -205,18 +174,15 @@ void addLines(char *line, char **sum)
 
     newSum[newSumSize + 1] = '\0';
 
-
-    int lineLen = strlen(line)-1;
-    int sumLen = strlen(*sum)-1;
+    int lineLen = strlen(line) - 1;
+    int sumLen = strlen(*sum) - 1;
     for (int i = newSumSize, j = lineLen, k = sumLen; i >= 0; i--, j--, k--)
     {
         char lineChar = j >= 0 ? line[j] : '0';
         char sumChar = k >= 0 ? (*sum)[k] : '0';
 
-        printf("LineChar: %c, SumChar: %c\n", lineChar, sumChar);
         if (lineChar == '0' && sumChar == '0')
         {
-            printf("RUNS1\n");
             if (temp != 0)
             {
                 newSum[i] = '1';
@@ -229,7 +195,6 @@ void addLines(char *line, char **sum)
         }
         if ((lineChar == '0' && sumChar == '1') || (lineChar == '1' && sumChar == '0'))
         {
-            printf("RUNS2\n");
             if (temp != 0)
             {
                 newSum[i] = '0';
@@ -241,7 +206,6 @@ void addLines(char *line, char **sum)
         }
         if (lineChar == '1' && sumChar == '1')
         {
-            printf("RUNS3\n");
             if (temp != 0)
             {
                 newSum[i] = '1';
@@ -260,7 +224,6 @@ void addLines(char *line, char **sum)
 
     free(*sum);
     *sum = newSum;
-    // printf("Sum: %s\n", newSum);
 }
 
 int main()
@@ -278,14 +241,18 @@ int main()
         printf("Memory allocation failed\n");
         abort();
     }
-    printf("%s\n", lines[0]);
     for (int i = 1; i < noLines; i++)
     {
-        printf("%s\n", lines[i]);
         addLines(lines[i], &sum);
+    }
+
+    printf("Sum:\n%s\n\nInput numbers:\n", sum);
+
+    for (int i = 0; i < noLines; i++)
+    {
+        printf("%s\n", lines[i]);
         free(lines[i]);
     }
-    printf("sum: %s\n", sum);
     free(lines);
     free(sum);
 }
