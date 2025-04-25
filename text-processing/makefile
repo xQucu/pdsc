@@ -1,12 +1,19 @@
-all: main
+# List your *.h files (if you do not have them in your project then leave the variable "headers" empty):
+headers = rand_malloc.h
 
-main: main.o 
-	gcc -fsanitize=undefined -g $^ -o $@  -lSDL2_gfx `sdl2-config --libs` -lm
+# List your *.c files:
+sources = main.c rand_malloc.c
 
-.c.o: 
-	gcc -fsanitize=undefined -g -Wall -pedantic `sdl2-config --cflags` -c  $<
+# Specify name of your program:
+executable = main
 
-main.o: main.c 
+$(executable): $(sources) $(headers)
+	gcc -g -Wall -pedantic -fsanitize=undefined $(sources) -o $(executable)
 
+.PHONY: clean
 clean:
-	-rm main.o main
+	rm -f $(executable) *.o
+
+.PHONY: check
+check: $(executable)
+	valgrind --leak-check=full -s --show-leak-kinds=all --track-origins=yes ./$(executable)

@@ -1,22 +1,25 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include "rand_malloc.h"
 
-char *getLine()
+char *getLine(int *ok)
 {
     char *line = NULL;
     int c;
     size_t bufSize = 0;
     size_t size = 0;
-
+    // todo fix memory leaks when aborting
     while ((c = getchar()) != EOF)
     {
         if (c != '1' && c != '0' && c != '\n' && c != ' ')
         {
             printf("Input is incorrect\n");
             free(line);
-            abort();
+            // abort();
+            goto error;
         }
         if (c == ' ' || (c == '\n' && size == 0))
         {
@@ -39,14 +42,17 @@ char *getLine()
             }
             else
             {
-                free(line);
-                abort();
+                // free(line);
+                // abort();
+                goto error;
             }
             newBuf = realloc(line, bufSize);
             if (!newBuf)
             {
-                free(line);
-                abort();
+                // free(line);
+                // free(newBuf);
+                // abort();
+                goto error;
             }
             line = newBuf;
         }
@@ -55,6 +61,7 @@ char *getLine()
 
     if ((c == EOF) && (size == 0))
     {
+        free(line);
         return NULL;
     }
     if (size >= bufSize)
@@ -66,19 +73,25 @@ char *getLine()
         }
         else
         {
-            free(line);
-            abort();
+            // free(line);
+            // abort();
+            goto error;
         }
         newBuf = realloc(line, bufSize);
         if (!newBuf)
         {
-            free(line);
-            abort();
+            // free(line);
+            // abort();
+            goto error;
         }
         line = newBuf;
     }
     line[size++] = '\0';
     return line;
+error:
+    *ok = 0;
+    free(line);
+    return NULL;
 }
 
 char **readLines(size_t *noLinesPtr)
@@ -88,8 +101,8 @@ char **readLines(size_t *noLinesPtr)
     size_t noLinesMax = 0;
     char *line;
     size_t i;
-
-    while ((line = getLine()))
+    int ok = 1;
+    while ((line = getLine(&ok)))
     {
         if (noLines >= noLinesMax)
         {
@@ -115,6 +128,10 @@ char **readLines(size_t *noLinesPtr)
         }
         lines[noLines++] = line;
     }
+    if (!ok)
+    {
+        goto error;
+    }
 
     *noLinesPtr = noLines;
     return lines;
@@ -123,9 +140,9 @@ error:
     for (i = noLines; i > 0; i--)
     {
         free(lines[i - 1]);
-        free(lines);
-        abort();
     }
+    free(lines);
+    free(line);
     return NULL;
 }
 int max(size_t a, size_t b)
@@ -137,7 +154,7 @@ int max(size_t a, size_t b)
     return b;
 }
 
-void addLines(char *line, char **sum)
+int addLines(char *line, char **sum)
 {
     int newSumSize = 0;
     for (int i = 0; i < strlen(line); i++)
@@ -169,7 +186,7 @@ void addLines(char *line, char **sum)
     if (newSum == NULL)
     {
         printf("Memory allocation failed\n");
-        abort();
+        return 0;
     }
 
     newSum[newSumSize + 1] = '\0';
@@ -224,6 +241,7 @@ void addLines(char *line, char **sum)
 
     free(*sum);
     *sum = newSum;
+    return 1;
 }
 
 int main()
@@ -232,14 +250,15 @@ int main()
     char **lines = readLines(&noLines);
     if (noLines == 0)
     {
-        printf("empty input");
-        abort();
+        printf("error occurred\n");
+        free(lines);
+        return 0;
     }
     char *sum = strdup(lines[0]);
     if (sum == NULL)
     {
         printf("Memory allocation failed\n");
-        abort();
+        goto free;
     }
     for (int i = 1; i < noLines; i++)
     {
@@ -247,12 +266,18 @@ int main()
     }
 
     printf("Sum:\n%s\n\nInput numbers:\n", sum);
-
     for (int i = 0; i < noLines; i++)
     {
         printf("%s\n", lines[i]);
+    }
+    goto free;
+    return 0;
+free:
+    for (int i = 0; i < noLines; i++)
+    {
         free(lines[i]);
     }
     free(lines);
     free(sum);
+    return 0;
 }
