@@ -27,13 +27,8 @@ int toInt(char c)
 	return number;
 }
 
-long strtol(const char *nPtr, char **endPtr, int base)
+bool isValidBase(const char *nPtr, char **endPtr, int base)
 {
-	int counter = 0;
-	char c = *nPtr;
-	int signHelper = 1;
-	long result = 0;
-
 	if ((base < 2 || base > 36) && base != 0)
 	{
 		errno = EINVAL;
@@ -41,15 +36,37 @@ long strtol(const char *nPtr, char **endPtr, int base)
 		{
 			*endPtr = (char *)nPtr;
 		}
+		return false;
+	}
+	return true;
+}
+
+void checkSpaces(const char *nPtr, int *counter, char *c)
+{
+	while (*c != '\0' && isspace(*c))
+	{
+		(*counter)++;
+		*c = *(nPtr + *counter);
+	}
+}
+
+
+long strtol(const char *nPtr, char **endPtr, int base)
+{
+	int counter = 0;
+	char c = *nPtr;
+	int signHelper = 1;
+	long result = 0;
+	bool ok = false;
+
+	ok = isValidBase(nPtr, endPtr, base);
+	if (!ok)
+	{
 		return result;
 	}
 
-	// check spaces
-	while (c != '\0' && isspace(c))
-	{
-		counter++;
-		c = *(nPtr + counter);
-	}
+	checkSpaces(nPtr, &counter, &c);
+
 	if (c == '\0')
 	{
 		if (endPtr != NULL)
@@ -136,7 +153,7 @@ long strtol(const char *nPtr, char **endPtr, int base)
 			{
 				*endPtr = (char *)(nPtr + counter);
 			}
-			return 0;
+			return result;
 		}
 	}
 	else if (base == 16)
@@ -164,7 +181,7 @@ long strtol(const char *nPtr, char **endPtr, int base)
 		{
 			*endPtr = (char *)nPtr;
 		}
-		return 0;
+		return result;
 	}
 
 	while (c != '\0')
@@ -200,5 +217,6 @@ long strtol(const char *nPtr, char **endPtr, int base)
 	{
 		*endPtr = (char *)(nPtr + counter);
 	}
+
 	return result;
 }
