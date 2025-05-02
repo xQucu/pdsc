@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <string.h>
 
 enum Menu
 {
@@ -20,6 +21,11 @@ const enum Menu INITIAL_MENU_ACTIONS[] = {NEW_ACCOUNT, LIST_ALL, SEARCH, ACCOUNT
 int NUMBER_OF_INITIAL_MENU_OPTIONS = 5;
 
 FILE *fptr;
+void clearInput()
+{
+    while (getchar() != '\n')
+        ;
+}
 
 void cls()
 {
@@ -30,8 +36,8 @@ void greet()
 {
     system("stty sane");
     printf("Welcome to banking system\n");
-    printf("Loading...\n");
-    sleep(1);
+    printf("\nPress Enter to continue");
+    clearInput();
     cls();
 }
 
@@ -79,24 +85,45 @@ void switchMenu(int *choice, const char *options[], int numberOfOptions, bool *i
     handleInput(choice, numberOfOptions, isConfirmed);
 }
 
-void clearInput()
+void writeNewAccountToFile(char *accountDetails, int accountNumber)
 {
-    while (getchar() != '\n')
-        ;
-}
-
-void file_CreateNewAccount(char *accountDetails)
-{
-    fptr = fopen("data.txt", "a");
+    fptr = fopen("data.txt", "r+");
     if (fptr == NULL)
     {
         printf("ERROR\n");
         exit(3);
     }
 
+    fseek(fptr, 0, SEEK_SET);
+    fprintf(fptr, "%d\n", accountNumber);
+
+    fseek(fptr, 0, SEEK_END);
     fprintf(fptr, "%s\n", accountDetails);
 
     fclose(fptr);
+}
+void listAccounts()
+{
+    fptr = fopen("data.txt", "r");
+    if (fptr == NULL)
+    {
+        printf("ERROR: Unable to open data file.\n");
+        exit(3);
+    }
+
+    int accountNumber;
+    fscanf(fptr, "%d", &accountNumber); // Skip the first line containing the last account number
+
+    printf("List of all accounts:\n");
+    char line[512];
+    while (fgets(line, sizeof(line), fptr) != NULL)
+    {
+        printf("%s", line);
+    }
+
+    fclose(fptr);
+    printf("\nPress Enter to return to the main menu...");
+    clearInput();
 }
 
 bool accountDetailsValid(char *name, char *surname, char *city, char *street, int houseNumber, char *pesel, int currentBalance, int currentLoan)
@@ -105,12 +132,16 @@ bool accountDetailsValid(char *name, char *surname, char *city, char *street, in
     {
         return false;
     }
+
+    if (strlen(pesel) != 11)
+    {
+        return false;
+    }
+
     for (int i = 0; name[i] != '\0'; i++)
     {
         if (isdigit(name[i]))
         {
-            printf("Name cannot contain numbers, please try again\n");
-            sleep(1);
             return false;
         }
     }
@@ -119,8 +150,6 @@ bool accountDetailsValid(char *name, char *surname, char *city, char *street, in
     {
         if (isdigit(surname[i]))
         {
-            printf("Surname cannot contain numbers, please try again\n");
-            sleep(1);
             return false;
         }
     }
@@ -129,8 +158,6 @@ bool accountDetailsValid(char *name, char *surname, char *city, char *street, in
     {
         if (isdigit(city[i]))
         {
-            printf("City cannot contain numbers, please try again\n");
-            sleep(1);
             return false;
         }
     }
@@ -139,13 +166,25 @@ bool accountDetailsValid(char *name, char *surname, char *city, char *street, in
     {
         if (isdigit(street[i]))
         {
-            printf("Street cannot contain numbers, please try again\n");
-            sleep(1);
             return false;
         }
     }
 
     return true;
+}
+
+int calculateAccountNumber()
+{
+    int accountNumber = 0;
+    fptr = fopen("data.txt", "r");
+    if (fptr == NULL)
+    {
+        printf("ERROR: Unable to open data file.\n");
+        exit(3);
+    }
+    fscanf(fptr, "%d", &accountNumber);
+    fclose(fptr);
+    return accountNumber + 1;
 }
 
 void createNewAccount()
@@ -192,12 +231,14 @@ void createNewAccount()
         return;
     }
 
+    int accountNumber = calculateAccountNumber();
     char accountDetails[500];
-    snprintf(accountDetails, sizeof(accountDetails), "%s %s %s %s %d %s %d %d",
-             name, surname, city, street, houseNumber, pesel, currentBalance, currentLoan);
-    file_CreateNewAccount(accountDetails);
+    snprintf(accountDetails, sizeof(accountDetails), "%d %s %s %s %s %d %s %d %d",
+             accountNumber, name, surname, city, street, houseNumber, pesel, currentBalance, currentLoan);
+    writeNewAccountToFile(accountDetails, accountNumber);
 
     printf("\nAccount created successfully with the following details:\n");
+    printf("Account number: %d\n", accountNumber);
     printf("Name: %s\n", name);
     printf("Surname: %s\n", surname);
     printf("City: %s\n", city);
@@ -206,7 +247,8 @@ void createNewAccount()
     printf("PESEL: %s\n", pesel);
     printf("Current Balance: %d\n", currentBalance);
     printf("Current Loan: %d\n", currentLoan);
-    sleep(3);
+    printf("\nPress Enter to return to previous menu");
+    clearInput();
 }
 
 void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
@@ -220,7 +262,6 @@ void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
             *isConfirmed = false;
             if (INITIAL_MENU_ACTIONS[*choice] == EXIT)
             {
-                goodbye();
                 *choice = -1;
                 return;
             }
@@ -234,6 +275,9 @@ void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
         *menu = INITIAL;
         break;
     case LIST_ALL:
+        listAccounts();
+        cls();
+        *menu = INITIAL;
         break;
     case SEARCH:
         break;
@@ -243,11 +287,26 @@ void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
         break;
 
     default:
-        // printf("Choose operation to do.\n");
         printf("BREAKS\n");
         exit(3);
         break;
     }
+}
+
+void checkDataFile()
+{
+    fptr = fopen("data.txt", "r");
+    if (fptr == NULL)
+    {
+        fptr = fopen("data.txt", "w");
+        if (fptr == NULL)
+        {
+            printf("ERROR: Unable to create data file.\n");
+            exit(3);
+        }
+        fprintf(fptr, "0\n");
+    }
+    fclose(fptr);
 }
 
 int main()
@@ -256,11 +315,11 @@ int main()
     int choice = 0;
     bool isConfirmed = false;
 
+    checkDataFile();
     greet();
 
     while (choice != -1)
     {
-        // cls();
         handleMenu(&menu, &choice, &isConfirmed);
     }
 
