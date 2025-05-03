@@ -500,14 +500,98 @@ void handleAccountOperation(int *choice, int *chosenID)
         int newBalance = currentBalance - amount;
         updateOneRecord(*chosenID, newBalance, currentLoan);
         printf("Operation completed successfully\n");
+        break;
     }
-    break;
     case TRANSFER:
+    {
+        printf("Please enter destination account number.\n");
+        int destinationAccountID;
+        scanf("%d", &destinationAccountID);
+        clearInput();
+
+        int destinationCurrentBalance, destinationCurrentLoan;
+        bool ok = getAccountDetails(destinationAccountID, &destinationCurrentBalance, &destinationCurrentLoan);
+        if (!ok)
+        {
+            printf("Operation aborted. Account doesn't exists.\n");
+            return;
+        }
+        if (*chosenID == destinationAccountID)
+        {
+            printf("Operation aborted. Incorrect transaction data.\n");
+            return;
+        }
+
+        printf("How much money do you want to transfer (you have %d)?\n", currentBalance);
+        scanf("%d", &amount);
+        clearInput();
+        if (amount <= 0 || amount > currentBalance)
+        {
+            printf("Operation can't be finished.\n");
+            return;
+        }
+        bool isConfirmed = confirmTransaction();
+        if (!isConfirmed)
+        {
+            printf("Operation aborted.\n");
+            return;
+        }
+
+        int newSourceBalance = currentBalance - amount;
+        int newDestBalance = destinationCurrentBalance + amount;
+        updateTwoRecords(*chosenID, newSourceBalance, currentLoan, destinationAccountID, newDestBalance, destinationCurrentLoan);
+        printf("Operation completed successfully\n");
         break;
+    }
+
     case LOAN:
+    {
+        printf("How much loan do you want to take?\n");
+        scanf("%d", &amount);
+        clearInput();
+        if (amount <= 0)
+        {
+            printf("Operation can't be finished.\n");
+            return;
+        }
+        bool isConfirmed = confirmTransaction();
+        if (!isConfirmed)
+        {
+            printf("Operation aborted.\n");
+            return;
+        }
+
+        int newLoan = currentLoan + amount;
+        int newBalance = currentBalance + amount;
+        updateOneRecord(*chosenID, newBalance, newLoan);
+        printf("Operation completed successfully\n");
+
         break;
+    }
+
     case PAY_DEBT:
+    {
+        printf("How much money do you want to pay the debt (you have %d) and debt is (%d)?\n", currentBalance, currentLoan);
+        scanf("%d", &amount);
+        clearInput();
+        if (amount <= 0 || amount > currentBalance || amount > currentLoan)
+        {
+            printf("Operation can't be finished.\n");
+            return;
+        }
+        bool isConfirmed = confirmTransaction();
+        if (!isConfirmed)
+        {
+            printf("Operation aborted.\n");
+            return;
+        }
+
+        int newLoan = currentLoan - amount;
+        int newBalance = currentBalance - amount;
+        updateOneRecord(*chosenID, newBalance, newLoan);
+        printf("Operation completed successfully\n");
         break;
+    }
 
     default:
         printf("ERROR\n");
