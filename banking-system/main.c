@@ -52,6 +52,7 @@ int NUMBER_OF_ACCOUNT_OPERATIONS = 6;
 
 FILE *fptr;
 FILE *newFptr;
+
 void clearInput()
 {
     while (getchar() != '\n')
@@ -109,30 +110,43 @@ void handleInput(int *choice, int numberOfOptions, bool *isConfirmed)
 void switchMenu(int *choice, const char *options[], int numberOfOptions, bool *isConfirmed, const char *message)
 {
     printf("%s\n", message);
+
     for (int i = 0; i < numberOfOptions; i++)
     {
         printf("[%c] %s\n", *choice == i ? 'x' : ' ', options[i]);
     }
+
     handleInput(choice, numberOfOptions, isConfirmed);
 }
 
 void writeNewAccountToFile(char *accountDetails, int accountNumber)
 {
-    fptr = fopen("data.txt", "r+");
+    fptr = fopen("data.txt", "r");
+    remove("data.tmp");
+    newFptr = fopen("data.tmp", "w");
     if (fptr == NULL)
     {
         printf("ERROR\n");
         exit(3);
     }
 
-    fseek(fptr, 0, SEEK_SET);
-    fprintf(fptr, "%d\n", accountNumber);
+    fprintf(newFptr, "%d\n", accountNumber);
 
-    fseek(fptr, 0, SEEK_END);
-    fprintf(fptr, "%s\n", accountDetails);
+    char line[1000];
+    fgets(line, sizeof(line), fptr);
+    while (fgets(line, sizeof(line), fptr) != NULL)
+    {
+        fprintf(newFptr, "%s", line);
+    }
 
+    fprintf(newFptr, "%s\n", accountDetails);
+
+    fclose(newFptr);
     fclose(fptr);
+    rename("data.tmp", "data.txt");
+    remove("data.tmp");
 }
+
 void listAccounts()
 {
     fptr = fopen("data.txt", "r");
@@ -159,12 +173,7 @@ void listAccounts()
 
 bool accountDetailsValid(char *name, char *surname, char *city, char *pesel, unsigned int currentBalance, int currentLoan)
 {
-    if (name[0] == '\0' || surname[0] == '\0' || city[0] == '\0' || pesel[0] == '\0' || currentBalance < 0 || currentLoan < 0)
-    {
-        return false;
-    }
-
-    if (strlen(pesel) != 11)
+    if (name[0] == '\0' || surname[0] == '\0' || city[0] == '\0' || pesel[0] == '\0' || currentBalance < 0 || currentLoan < 0 || strlen(pesel) != 11)
     {
         return false;
     }
@@ -220,21 +229,27 @@ void createNewAccount()
     int currentLoan;
 
     printf("Welcome to the new account creator\n");
+
     printf("Enter your name: ");
     scanf("%99s", name);
+    clearInput();
 
     printf("Enter your surname: ");
     scanf("%99s", surname);
     clearInput();
+
     printf("Enter your city: ");
     scanf("%99s", city);
     clearInput();
+
     printf("Enter your PESEL: ");
     scanf("%11s", pesel);
     clearInput();
+
     printf("Enter your current balance: ");
     scanf("%u", &currentBalance);
     clearInput();
+
     printf("Enter your current loan: ");
     scanf("%d", &currentLoan);
     clearInput();
@@ -295,7 +310,7 @@ void searchRecords(int *choice)
             printf("City: %s\n", city);
             printf("PESEL: %s\n", pesel);
             printf("Current Balance: %d\n", currentBalance);
-            printf("Current Loan: %d\n", currentLoan);
+            printf("Current Loan: %d\n\n", currentLoan);
         }
     }
 
@@ -402,11 +417,11 @@ void updateTwoRecords(int firstId, int firstNewBalance, int firstNewLoan, int se
     int tBalance, tLoan;
     int args;
     int accountNumberHelper;
+
     fscanf(fptr, "%d", &accountNumberHelper);
     fprintf(newFptr, "%d\n", accountNumberHelper);
     while (1)
     {
-
         args = fscanf(fptr, "%d %99s %99s %99s %11s %d %d", &accountNumber, name, surname, city, pesel, &balance, &loan);
 
         if (args == EOF)
@@ -434,6 +449,7 @@ void updateTwoRecords(int firstId, int firstNewBalance, int firstNewLoan, int se
             exit(3);
         }
     }
+
     fclose(fptr);
     fclose(newFptr);
     rename("data.tmp", "data.txt");
@@ -549,7 +565,13 @@ void handleAccountOperation(int *choice, int *chosenID)
         printf("How much loan do you want to take?\n");
         scanf("%d", &amount);
         clearInput();
-        if (amount <= 0)
+
+        int loanCost;
+        printf("What is the loan cost?\n");
+        scanf("%d", &loanCost);
+        clearInput();
+
+        if (amount <= 0 || loanCost < 0)
         {
             printf("Operation can't be finished.\n");
             return;
@@ -561,7 +583,7 @@ void handleAccountOperation(int *choice, int *chosenID)
             return;
         }
 
-        int newLoan = currentLoan + amount;
+        int newLoan = currentLoan + amount + loanCost;
         int newBalance = currentBalance + amount;
         updateOneRecord(*chosenID, newBalance, newLoan);
         printf("Operation completed successfully\n");
@@ -601,7 +623,6 @@ void handleAccountOperation(int *choice, int *chosenID)
 
 void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed, int *chosenID)
 {
-
     switch (*menu)
     {
     case INITIAL:
@@ -719,19 +740,6 @@ int main()
     }
 
     goodbye();
-
-    // create new account v
-    // step by step
-    // list all accounts v
-    // search for account v
-    // category v
-    // search v
-    // choose account
-    // deposit
-    // withdrawal
-    // transfer to other account
-    // take loan
-    // pay debt
 
     return 0;
 }
