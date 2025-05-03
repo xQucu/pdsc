@@ -358,8 +358,9 @@ void updateOneRecord(int id, int newBalance, int newLoan)
     char name[100], surname[100], city[100], pesel[12];
     int tBalance, tLoan;
     int args;
-    int temp;
-    fscanf(fptr, "%d", &temp);
+    int accountNumberHelper;
+    fscanf(fptr, "%d", &accountNumberHelper);
+    fprintf(newFptr, "%d\n", accountNumberHelper);
     while (1)
     {
 
@@ -400,8 +401,9 @@ void updateTwoRecords(int firstId, int firstNewBalance, int firstNewLoan, int se
     char name[100], surname[100], city[100], pesel[12];
     int tBalance, tLoan;
     int args;
-    int temp;
-    fscanf(fptr, "%d", &temp);
+    int accountNumberHelper;
+    fscanf(fptr, "%d", &accountNumberHelper);
+    fprintf(newFptr, "%d\n", accountNumberHelper);
     while (1)
     {
 
@@ -458,7 +460,7 @@ void handleAccountOperation(int *choice, int *chosenID)
     case DEPOSIT:
         printf("How much money do you want to deposit?\n");
         scanf("%d", &amount);
-        printf("You want to deposit: %u\n", amount);
+        clearInput();
         if (amount <= 0 || amount > currentBalance)
         {
             printf("Operation can't be finished.\n");
