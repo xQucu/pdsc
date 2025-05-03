@@ -4,21 +4,36 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <string.h>
+#include <strings.h>
 
 enum Menu
 {
     INITIAL,
     NEW_ACCOUNT,
     LIST_ALL,
-    SEARCH,
     SEARCH_CATEGORY,
+    SEARCH,
     ACCOUNT_OPERATION,
     EXIT
 };
 
+enum SearchCategories
+{
+    ACCOUNT_NUMBER,
+    NAME,
+    SURNAME,
+    CITY,
+    PESEL,
+    RETURN_TO_INITIAL_MENU
+};
+
 const char *INITIAL_MENU_OPTIONS[] = {"Create a new account", "List all accounts", "Search for account", "Choose account to make transaction.", "Quit"};
-const enum Menu INITIAL_MENU_ACTIONS[] = {NEW_ACCOUNT, LIST_ALL, SEARCH, ACCOUNT_OPERATION, EXIT};
+const enum Menu INITIAL_MENU_ACTIONS[] = {NEW_ACCOUNT, LIST_ALL, SEARCH_CATEGORY, ACCOUNT_OPERATION, EXIT};
 int NUMBER_OF_INITIAL_MENU_OPTIONS = 5;
+
+const char *SEARCH_CATEGORIES[] = {"Account number", "Name", "Surname", "City", "PESEL", "Return to previous menu"};
+const enum SearchCategories SEARCH_CATEGORIES_ACTIONS[] = {ACCOUNT_NUMBER, NAME, SURNAME, CITY, PESEL, RETURN_TO_INITIAL_MENU};
+int NUMBER_OF_SEARCH_CATEGORIES = 6;
 
 FILE *fptr;
 void clearInput()
@@ -114,7 +129,7 @@ void listAccounts()
     int accountNumber;
     fscanf(fptr, "%d", &accountNumber); // Skip the first line containing the last account number
 
-    printf("List of all accounts:\n");
+    printf("Account_number Name Surname City PESEL Current_balance Loan\n");
     char line[512];
     while (fgets(line, sizeof(line), fptr) != NULL)
     {
@@ -126,9 +141,9 @@ void listAccounts()
     clearInput();
 }
 
-bool accountDetailsValid(char *name, char *surname, char *city, char *street, int houseNumber, char *pesel, int currentBalance, int currentLoan)
+bool accountDetailsValid(char *name, char *surname, char *city, char *pesel, int currentBalance, int currentLoan)
 {
-    if (name[0] == '\0' || surname[0] == '\0' || city[0] == '\0' || street[0] == '\0' || houseNumber <= 0 || pesel[0] == '\0' || currentBalance < 0 || currentLoan < 0)
+    if (name[0] == '\0' || surname[0] == '\0' || city[0] == '\0' || pesel[0] == '\0' || currentBalance < 0 || currentLoan < 0)
     {
         return false;
     }
@@ -162,14 +177,6 @@ bool accountDetailsValid(char *name, char *surname, char *city, char *street, in
         }
     }
 
-    for (int i = 0; street[i] != '\0'; i++)
-    {
-        if (isdigit(street[i]))
-        {
-            return false;
-        }
-    }
-
     return true;
 }
 
@@ -192,8 +199,6 @@ void createNewAccount()
     char name[100];
     char surname[100];
     char city[100];
-    char street[100];
-    int houseNumber;
     char pesel[12];
     int currentBalance;
     int currentLoan;
@@ -208,11 +213,6 @@ void createNewAccount()
     printf("Enter your city: ");
     scanf("%99s", city);
     clearInput();
-    printf("Enter your street: ");
-    scanf("%99s", street);
-    printf("Enter your house number: ");
-    scanf("%d", &houseNumber);
-    clearInput();
     printf("Enter your PESEL: ");
     scanf("%11s", pesel);
     clearInput();
@@ -223,7 +223,7 @@ void createNewAccount()
     scanf("%d", &currentLoan);
     clearInput();
 
-    bool valid = accountDetailsValid(name, surname, city, street, houseNumber, pesel, currentBalance, currentLoan);
+    bool valid = accountDetailsValid(name, surname, city, pesel, currentBalance, currentLoan);
     if (!valid)
     {
         printf("Incorrect data, please try again\n");
@@ -233,8 +233,8 @@ void createNewAccount()
 
     int accountNumber = calculateAccountNumber();
     char accountDetails[500];
-    snprintf(accountDetails, sizeof(accountDetails), "%d %s %s %s %s %d %s %d %d",
-             accountNumber, name, surname, city, street, houseNumber, pesel, currentBalance, currentLoan);
+    snprintf(accountDetails, sizeof(accountDetails), "%d %s %s %s %s %d %d",
+             accountNumber, name, surname, city, pesel, currentBalance, currentLoan);
     writeNewAccountToFile(accountDetails, accountNumber);
 
     printf("\nAccount created successfully with the following details:\n");
@@ -242,8 +242,6 @@ void createNewAccount()
     printf("Name: %s\n", name);
     printf("Surname: %s\n", surname);
     printf("City: %s\n", city);
-    printf("Street: %s\n", street);
-    printf("House Number: %d\n", houseNumber);
     printf("PESEL: %s\n", pesel);
     printf("Current Balance: %d\n", currentBalance);
     printf("Current Loan: %d\n", currentLoan);
@@ -251,8 +249,55 @@ void createNewAccount()
     clearInput();
 }
 
+void searchRecords(int *choice)
+{
+    char searchPhrase[100];
+    printf("Enter the %s to search for.\n", SEARCH_CATEGORIES[*choice]);
+    scanf("%99s", searchPhrase);
+
+    fptr = fopen("data.txt", "r");
+    int accountNumber;
+    fscanf(fptr, "%d", &accountNumber);
+    int ok;
+    bool found = false;
+    while (1)
+    {
+        int accountNumber, currentBalance, currentLoan;
+        char name[100], surname[100], city[100], pesel[12];
+        char *dataToCompare[] = {name, surname, city, pesel};
+        ok = fscanf(fptr, "%d %99s %99s %99s %11s %d %d",
+                    &accountNumber, name, surname, city, pesel, &currentBalance, &currentLoan);
+        if (ok == EOF)
+            break;
+
+        if ((*choice == 0 && atoi(searchPhrase) == accountNumber) || (*choice != 0 && strcasecmp(dataToCompare[*choice - 1], searchPhrase) == 0))
+        {
+            found = true;
+            printf("Account number: %d\n", accountNumber);
+            printf("Name: %s\n", name);
+            printf("Surname: %s\n", surname);
+            printf("City: %s\n", city);
+            printf("PESEL: %s\n", pesel);
+            printf("Current Balance: %d\n", currentBalance);
+            printf("Current Loan: %d\n", currentLoan);
+        }
+    }
+
+    if (!found)
+    {
+        printf("\nAccount not found\n");
+    }
+    printf("\nPress Enter to return to the previous menu...");
+
+    getchar();
+    clearInput();
+    cls();
+    fclose(fptr);
+}
+
 void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
 {
+
     switch (*menu)
     {
     case INITIAL:
@@ -266,6 +311,7 @@ void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
                 return;
             }
             *menu = INITIAL_MENU_ACTIONS[*choice];
+            *choice = 0;
         }
 
         break;
@@ -280,8 +326,23 @@ void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
         *menu = INITIAL;
         break;
     case SEARCH:
+        searchRecords(choice);
+        *menu = SEARCH_CATEGORY;
         break;
     case SEARCH_CATEGORY:
+        switchMenu(choice, SEARCH_CATEGORIES, NUMBER_OF_SEARCH_CATEGORIES, isConfirmed);
+        if (*isConfirmed)
+        {
+            *isConfirmed = false;
+            if (SEARCH_CATEGORIES_ACTIONS[*choice] == RETURN_TO_INITIAL_MENU)
+            {
+                *choice = 0;
+                *menu = INITIAL;
+                return;
+            }
+            // *choice = SEARCH_CATEGORIES_ACTIONS[*choice];
+            *menu = SEARCH;
+        }
         break;
     case ACCOUNT_OPERATION:
         break;
@@ -325,10 +386,9 @@ int main()
 
     goodbye();
 
-    // create new account
+    // create new account v
     // step by step
-    // list all accounts
-    // scrolling
+    // list all accounts v
     // search for account
     // category
     // search
