@@ -13,6 +13,7 @@ enum Menu
     LIST_ALL,
     SEARCH_CATEGORY,
     SEARCH,
+    CHOOSING_ACCOUNT_OPERATION,
     ACCOUNT_OPERATION,
     EXIT
 };
@@ -27,15 +28,30 @@ enum SearchCategories
     RETURN_TO_INITIAL_MENU
 };
 
-const char *INITIAL_MENU_OPTIONS[] = {"Create a new account", "List all accounts", "Search for account", "Choose account to make transaction.", "Quit"};
-const enum Menu INITIAL_MENU_ACTIONS[] = {NEW_ACCOUNT, LIST_ALL, SEARCH_CATEGORY, ACCOUNT_OPERATION, EXIT};
+enum AccountOperations
+{
+    DEPOSIT,
+    WITHDRAWAL,
+    TRANSFER,
+    LOAN,
+    PAY_DEBT,
+    RETURN_TO_PREVIOUS_MENU
+};
+
+const char *INITIAL_MENU_OPTIONS[] = {"Create new account", "List all accounts", "Search for account", "Make transaction", "Quit"};
+const enum Menu INITIAL_MENU_ACTIONS[] = {NEW_ACCOUNT, LIST_ALL, SEARCH_CATEGORY, CHOOSING_ACCOUNT_OPERATION, EXIT};
 int NUMBER_OF_INITIAL_MENU_OPTIONS = 5;
 
 const char *SEARCH_CATEGORIES[] = {"Account number", "Name", "Surname", "City", "PESEL", "Return to previous menu"};
 const enum SearchCategories SEARCH_CATEGORIES_ACTIONS[] = {ACCOUNT_NUMBER, NAME, SURNAME, CITY, PESEL, RETURN_TO_INITIAL_MENU};
 int NUMBER_OF_SEARCH_CATEGORIES = 6;
 
+const char *ACCOUNT_OPERATIONS[] = {"Deposit money", "Withdraw money", "Transfer money", "Take loan", "Pay the debt", "Return to previous menu"};
+const enum AccountOperations ACCOUNT_OPERATIONS_ACTIONS[] = {DEPOSIT, WITHDRAWAL, TRANSFER, LOAN, PAY_DEBT, RETURN_TO_PREVIOUS_MENU};
+int NUMBER_OF_ACCOUNT_OPERATIONS = 6;
+
 FILE *fptr;
+FILE *newFptr;
 void clearInput()
 {
     while (getchar() != '\n')
@@ -84,15 +100,15 @@ void handleInput(int *choice, int numberOfOptions, bool *isConfirmed)
             break;
         }
     }
-    else if (ch == '\r') // enter key to confirm selection
+    else if (ch == '\r') // enter key
     {
         *isConfirmed = true;
     }
 }
 
-void switchMenu(int *choice, const char *options[], int numberOfOptions, bool *isConfirmed)
+void switchMenu(int *choice, const char *options[], int numberOfOptions, bool *isConfirmed, const char *message)
 {
-    printf("Choose what operation do you want to make\n");
+    printf("%s\n", message);
     for (int i = 0; i < numberOfOptions; i++)
     {
         printf("[%c] %s\n", *choice == i ? 'x' : ' ', options[i]);
@@ -127,10 +143,10 @@ void listAccounts()
     }
 
     int accountNumber;
-    fscanf(fptr, "%d", &accountNumber); // Skip the first line containing the last account number
+    fscanf(fptr, "%d", &accountNumber);
 
     printf("Account_number Name Surname City PESEL Current_balance Loan\n");
-    char line[512];
+    char line[1000];
     while (fgets(line, sizeof(line), fptr) != NULL)
     {
         printf("%s", line);
@@ -141,7 +157,7 @@ void listAccounts()
     clearInput();
 }
 
-bool accountDetailsValid(char *name, char *surname, char *city, char *pesel, int currentBalance, int currentLoan)
+bool accountDetailsValid(char *name, char *surname, char *city, char *pesel, unsigned int currentBalance, int currentLoan)
 {
     if (name[0] == '\0' || surname[0] == '\0' || city[0] == '\0' || pesel[0] == '\0' || currentBalance < 0 || currentLoan < 0)
     {
@@ -200,7 +216,7 @@ void createNewAccount()
     char surname[100];
     char city[100];
     char pesel[12];
-    int currentBalance;
+    unsigned int currentBalance;
     int currentLoan;
 
     printf("Welcome to the new account creator\n");
@@ -217,7 +233,7 @@ void createNewAccount()
     scanf("%11s", pesel);
     clearInput();
     printf("Enter your current balance: ");
-    scanf("%d", &currentBalance);
+    scanf("%u", &currentBalance);
     clearInput();
     printf("Enter your current loan: ");
     scanf("%d", &currentLoan);
@@ -295,13 +311,196 @@ void searchRecords(int *choice)
     fclose(fptr);
 }
 
-void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
+bool getAccountDetails(int id, int *currentBalance, int *currentLoan)
+{
+    int ok;
+    fptr = fopen("data.txt", "r");
+    fscanf(fptr, "%*s");
+    while (1)
+    {
+        int accountNumber;
+
+        ok = fscanf(fptr, "%d %*s %*s %*s %*s %d %d", &accountNumber, currentBalance, currentLoan);
+        if (ok == EOF)
+            break;
+
+        if (id == accountNumber)
+        {
+            fclose(fptr);
+            return true;
+        }
+    }
+    fclose(fptr);
+    return false;
+}
+
+bool confirmTransaction()
+{
+    bool isConfirmed = false;
+    int decision = 0;
+    const char *confirmationOptions[] = {"Yes", "No"};
+    int numberOfOptions = 2;
+    printf("Are you sure you want to make this transaction? (y/n)\n");
+    const char *message = "Are you sure you want to make that operation";
+    while (!isConfirmed)
+    {
+        switchMenu(&decision, confirmationOptions, numberOfOptions, &isConfirmed, message);
+    }
+    return decision == 0;
+}
+
+void updateOneRecord(int id, int newBalance, int newLoan)
+{
+    fptr = fopen("data.txt", "r");
+    remove("data.tmp");
+    newFptr = fopen("data.tmp", "w");
+    int accountNumber, balance, loan;
+    char name[100], surname[100], city[100], pesel[12];
+    int tBalance, tLoan;
+    int args;
+    int temp;
+    fscanf(fptr, "%d", &temp);
+    while (1)
+    {
+
+        args = fscanf(fptr, "%d %99s %99s %99s %11s %d %d", &accountNumber, name, surname, city, pesel, &balance, &loan);
+
+        if (args == EOF)
+        {
+            break;
+        }
+        if (id == accountNumber)
+        {
+            tBalance = newBalance;
+            tLoan = newLoan;
+        }
+        else
+        {
+            tBalance = balance;
+            tLoan = loan;
+        }
+        if (fprintf(newFptr, "%d %s %s %s %s %d %d\n", accountNumber, name, surname, city, pesel, tBalance, tLoan) < 0)
+        {
+            perror("Error\n");
+            exit(3);
+        }
+    }
+    fclose(fptr);
+    fclose(newFptr);
+    rename("data.tmp", "data.txt");
+    remove("data.tmp");
+}
+
+void updateTwoRecords(int firstId, int firstNewBalance, int firstNewLoan, int secondId, int secondNewBalance, int secondNewLoan)
+{
+    fptr = fopen("data.txt", "r");
+    remove("data.tmp");
+    newFptr = fopen("data.tmp", "w");
+    int accountNumber, balance, loan;
+    char name[100], surname[100], city[100], pesel[12];
+    int tBalance, tLoan;
+    int args;
+    int temp;
+    fscanf(fptr, "%d", &temp);
+    while (1)
+    {
+
+        args = fscanf(fptr, "%d %99s %99s %99s %11s %d %d", &accountNumber, name, surname, city, pesel, &balance, &loan);
+
+        if (args == EOF)
+        {
+            break;
+        }
+        if (firstId == accountNumber)
+        {
+            tBalance = firstNewBalance;
+            tLoan = firstNewLoan;
+        }
+        else if (secondId == accountNumber)
+        {
+            tBalance = secondNewBalance;
+            tLoan = secondNewLoan;
+        }
+        else
+        {
+            tBalance = balance;
+            tLoan = loan;
+        }
+        if (fprintf(newFptr, "%d %s %s %s %s %d %d\n", accountNumber, name, surname, city, pesel, tBalance, tLoan) < 0)
+        {
+            perror("Error\n");
+            exit(3);
+        }
+    }
+    fclose(fptr);
+    fclose(newFptr);
+    rename("data.tmp", "data.txt");
+    remove("data.tmp");
+}
+
+void handleAccountOperation(int *choice, int *chosenID)
+{
+    printf("Please enter your account number.\n");
+    scanf("%d", chosenID);
+    clearInput();
+    int currentBalance, currentLoan;
+    bool ok = getAccountDetails(*chosenID, &currentBalance, &currentLoan);
+    if (!ok)
+    {
+        printf("Operation aborted. Account doesn't exists.\n");
+        return;
+    }
+
+    int amount = 0;
+
+    switch (ACCOUNT_OPERATIONS_ACTIONS[*choice])
+    {
+    case DEPOSIT:
+        printf("How much money do you want to deposit?\n");
+        scanf("%d", &amount);
+        printf("You want to deposit: %u\n", amount);
+        if (amount <= 0 || amount > currentBalance)
+        {
+            printf("Operation can't be finished.\n");
+            return;
+        }
+        bool isConfirmed = confirmTransaction();
+        if (!isConfirmed)
+        {
+            printf("Operation aborted.\n");
+            return;
+        }
+
+        int newBalance = currentBalance + amount;
+        updateOneRecord(*chosenID, newBalance, currentLoan);
+        printf("Operation completed successfully\n");
+
+        break;
+    case WITHDRAWAL:
+        break;
+    case TRANSFER:
+        break;
+    case LOAN:
+        break;
+    case PAY_DEBT:
+        break;
+
+    default:
+        printf("ERROR\n");
+        break;
+    }
+}
+
+void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed, int *chosenID)
 {
 
     switch (*menu)
     {
     case INITIAL:
-        switchMenu(choice, INITIAL_MENU_OPTIONS, NUMBER_OF_INITIAL_MENU_OPTIONS, isConfirmed);
+    {
+        char *message = "Choose what do you want to do";
+
+        switchMenu(choice, INITIAL_MENU_OPTIONS, NUMBER_OF_INITIAL_MENU_OPTIONS, isConfirmed, message);
         if (*isConfirmed)
         {
             *isConfirmed = false;
@@ -315,6 +514,7 @@ void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
         }
 
         break;
+    }
     case NEW_ACCOUNT:
         createNewAccount();
         cls();
@@ -330,7 +530,9 @@ void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
         *menu = SEARCH_CATEGORY;
         break;
     case SEARCH_CATEGORY:
-        switchMenu(choice, SEARCH_CATEGORIES, NUMBER_OF_SEARCH_CATEGORIES, isConfirmed);
+    {
+        const char *message = "Choose category to search by";
+        switchMenu(choice, SEARCH_CATEGORIES, NUMBER_OF_SEARCH_CATEGORIES, isConfirmed, message);
         if (*isConfirmed)
         {
             *isConfirmed = false;
@@ -340,11 +542,34 @@ void handleMenu(enum Menu *menu, int *choice, bool *isConfirmed)
                 *menu = INITIAL;
                 return;
             }
-            // *choice = SEARCH_CATEGORIES_ACTIONS[*choice];
             *menu = SEARCH;
         }
         break;
+    }
+    case CHOOSING_ACCOUNT_OPERATION:
+    {
+        const char *message = "Choose what operation do you want to make";
+        switchMenu(choice, ACCOUNT_OPERATIONS, NUMBER_OF_ACCOUNT_OPERATIONS, isConfirmed, message);
+        if (*isConfirmed)
+        {
+            *isConfirmed = false;
+            if (ACCOUNT_OPERATIONS_ACTIONS[*choice] == RETURN_TO_PREVIOUS_MENU)
+            {
+                *choice = 0;
+                *menu = INITIAL;
+                return;
+            }
+            *menu = ACCOUNT_OPERATION;
+        }
+        break;
+    }
     case ACCOUNT_OPERATION:
+        handleAccountOperation(choice, chosenID);
+
+        printf("\nPress Enter to continue");
+        clearInput();
+        cls();
+        *menu = CHOOSING_ACCOUNT_OPERATION;
         break;
 
     default:
@@ -375,13 +600,14 @@ int main()
     enum Menu menu = INITIAL;
     int choice = 0;
     bool isConfirmed = false;
+    int chosenID = -1;
 
     checkDataFile();
     greet();
 
     while (choice != -1)
     {
-        handleMenu(&menu, &choice, &isConfirmed);
+        handleMenu(&menu, &choice, &isConfirmed, &chosenID);
     }
 
     goodbye();
@@ -389,9 +615,9 @@ int main()
     // create new account v
     // step by step
     // list all accounts v
-    // search for account
-    // category
-    // search
+    // search for account v
+    // category v
+    // search v
     // choose account
     // deposit
     // withdrawal
