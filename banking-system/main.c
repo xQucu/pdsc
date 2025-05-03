@@ -340,8 +340,8 @@ bool confirmTransaction()
     int decision = 0;
     const char *confirmationOptions[] = {"Yes", "No"};
     int numberOfOptions = 2;
-    printf("Are you sure you want to make this transaction? (y/n)\n");
     const char *message = "Are you sure you want to make that operation";
+    cls();
     while (!isConfirmed)
     {
         switchMenu(&decision, confirmationOptions, numberOfOptions, &isConfirmed, message);
@@ -458,6 +458,7 @@ void handleAccountOperation(int *choice, int *chosenID)
     switch (ACCOUNT_OPERATIONS_ACTIONS[*choice])
     {
     case DEPOSIT:
+    {
         printf("How much money do you want to deposit?\n");
         scanf("%d", &amount);
         clearInput();
@@ -478,9 +479,29 @@ void handleAccountOperation(int *choice, int *chosenID)
         printf("Operation completed successfully\n");
 
         break;
+    }
     case WITHDRAWAL:
-    
-        break;
+    {
+        printf("How much money do you want to withdraw (you have %d)?\n", currentBalance);
+        scanf("%d", &amount);
+        clearInput();
+        if (amount <= 0 || amount > currentBalance)
+        {
+            printf("Operation can't be finished.\n");
+            return;
+        }
+        bool isConfirmed = confirmTransaction();
+        if (!isConfirmed)
+        {
+            printf("Operation aborted.\n");
+            return;
+        }
+
+        int newBalance = currentBalance - amount;
+        updateOneRecord(*chosenID, newBalance, currentLoan);
+        printf("Operation completed successfully\n");
+    }
+    break;
     case TRANSFER:
         break;
     case LOAN:
