@@ -461,7 +461,7 @@ void handleAccountOperation(int *choice, int *chosenID)
         printf("How much money do you want to deposit?\n");
         scanf("%d", &amount);
         clearInput();
-        if (amount <= 0 || amount > currentBalance)
+        if (amount <= 0)
         {
             printf("Operation can't be finished.\n");
             return;
@@ -479,6 +479,7 @@ void handleAccountOperation(int *choice, int *chosenID)
 
         break;
     case WITHDRAWAL:
+    
         break;
     case TRANSFER:
         break;
