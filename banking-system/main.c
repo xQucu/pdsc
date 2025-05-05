@@ -178,6 +178,14 @@ bool accountDetailsValid(char *name, char *surname, char *city, char *pesel, uns
         return false;
     }
 
+    for (int i = 0; pesel[i] != '\0'; i++)
+    {
+        if (!isdigit(pesel[i]))
+        {
+            return false;
+        }
+    }
+
     for (int i = 0; name[i] != '\0'; i++)
     {
         if (isdigit(name[i]))
